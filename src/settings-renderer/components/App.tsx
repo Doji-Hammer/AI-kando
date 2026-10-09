@@ -26,7 +26,8 @@ import {
   IntroDialog,
 } from './dialogs';
 import { MenuList, CollectionList } from './menu-list';
-import { MenuPreview, PreviewHeader, PreviewFooter } from './menu-preview';
+import { MenuPreview, PreviewHeader } from './menu-preview';
+import Assistant from './assistant/Assistant';
 import { Properties } from './menu-properties';
 import { Note, Sidebar } from './common';
 
@@ -50,10 +51,15 @@ export default function App() {
   React.useEffect(() => {
     MouseTrap.bind('mod+z', () => useMenuSettings.temporal.getState().undo());
     MouseTrap.bind('mod+y', () => useMenuSettings.temporal.getState().redo());
+    // Mac conventions: Cmd+Shift+Z redoes, Cmd+, opens settings.
+    MouseTrap.bind('mod+shift+z', () => useMenuSettings.temporal.getState().redo());
+    MouseTrap.bind('mod+,', () => useAppState.getState().setSettingsDialogVisible(true));
 
     return () => {
       MouseTrap.unbind('mod+z');
       MouseTrap.unbind('mod+y');
+      MouseTrap.unbind('mod+shift+z');
+      MouseTrap.unbind('mod+,');
     };
   }, []);
 
@@ -142,7 +148,7 @@ export default function App() {
             })}>
             <PreviewHeader />
             <MenuPreview />
-            <PreviewFooter />
+            <Assistant />
           </div>
           <Sidebar
             initialWidth={sidebarWidths.right}

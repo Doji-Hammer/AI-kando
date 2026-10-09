@@ -33,27 +33,30 @@
 .workflowTabs {
   display: flex;
   gap: 2px;
-  align-items: flex-start;
-  margin-bottom: -2px;
+  align-items: flex-end;
+  margin-bottom: -1px;
   z-index: 1;
 
+  // Every tab shows its name, so Select / Hover / Open can be told apart at a glance.
   .workflowTab {
+    appearance: none;
+    font: inherit;
+    color: $text-muted;
+    background: transparent;
+    cursor: pointer;
+
     display: flex;
+    align-items: center;
+    gap: 6px;
     border-radius: 8px 8px 0 0;
-    padding: 6px 8px;
-    font-weight: bold;
-    border: 1.5px solid transparent;
-
-    min-width: 0px;
-
+    padding: 6px 10px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-bottom: none;
+    min-width: 0;
     overflow: hidden;
     white-space: nowrap;
-
-    flex: 0 1 auto;
-    transition:
-      flex-grow 250ms ease,
-      padding 250ms ease,
-      background-color 250ms ease;
+    transition: background-color 150ms cubic-bezier(0.25, 1, 0.5, 1);
 
     .workflowIcon {
       display: inline-flex;
@@ -63,67 +66,19 @@
     }
 
     .workflowName {
-      display: inline-block;
-      opacity: 0;
-      max-width: 0;
       overflow: hidden;
-      transition:
-        padding 250ms ease,
-        opacity 250ms ease,
-        max-width 250ms ease;
+      text-overflow: ellipsis;
     }
 
     &.active {
-      flex-grow: 1;
+      color: $text-normal;
       background-color: light-dark($base-light, color.adjust($base-dark, $lightness: 5%));
-      border: 1.5px solid
-        light-dark(
-          color.adjust($base-light, $lightness: -10%),
-          color.adjust($base-dark, $lightness: -10%)
-        );
-      border-bottom: 1.5px solid transparent;
-
-      .workflowName {
-        opacity: 1;
-        max-width: 240px;
-        padding-left: 8px;
-      }
+      border-color: light-dark($hairline, color.adjust($base-dark, $lightness: -10%));
     }
 
-    &:not(.active) {
-      border-radius: 8px;
-      padding-bottom: 2px;
-
-      &:hover {
-        background-color: light-dark(
-          color.adjust($base-light, $lightness: -3%),
-          color.adjust($base-dark, $lightness: 3%)
-        );
-      }
-
-      &:active {
-        transform: translateY(1px);
-      }
-    }
-  }
-
-  &:has(.workflowTab:hover) .workflowTab {
-    flex-grow: 0;
-
-    .workflowName {
-      opacity: 0;
-      max-width: 0;
-      padding-left: 0;
-    }
-  }
-
-  &:has(.workflowTab:hover) .workflowTab:hover {
-    flex-grow: 1;
-
-    .workflowName {
-      opacity: 1;
-      max-width: 240px;
-      padding-left: 8px;
+    &:not(.active):hover {
+      color: $text-normal;
+      background-color: light-dark($surface-soft, color.adjust($base-dark, $lightness: 3%));
     }
   }
 }

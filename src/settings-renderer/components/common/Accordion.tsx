@@ -20,6 +20,9 @@ export type AccordionItemProps = {
   /** Title shown in the header on the left side. */
   readonly title: string;
 
+  /** Optional one-line summary of the current values, shown while collapsed. */
+  readonly summary?: string;
+
   /** The content shown in the collapsible area. */
   readonly children?: React.ReactNode;
 
@@ -42,6 +45,7 @@ type Props = {
 
 type AccordionPanelProps = {
   readonly title: string;
+  readonly summary?: string;
   readonly children?: React.ReactNode;
   readonly isExpanded: boolean;
   readonly onToggle: (isExpanded: boolean) => void;
@@ -56,19 +60,24 @@ function AccordionPanel(props: AccordionPanelProps) {
 
   return (
     <div className={classes.accordionPanel}>
-      <div
+      <button
+        aria-expanded={props.isExpanded}
         className={classes.header}
+        type="button"
         onClick={() => {
           props.onToggle?.(!props.isExpanded);
         }}>
         <span className={classes.title}>{props.title}</span>
+        {props.summary && !props.isExpanded ? (
+          <span className={classes.summary}>{props.summary}</span>
+        ) : null}
         <TbChevronDown
           className={cx({
             caret: true,
             expanded: props.isExpanded,
           })}
         />
-      </div>
+      </button>
       <div ref={contentRef}>{props.isExpanded ? props.children : null}</div>
     </div>
   );
@@ -87,6 +96,7 @@ export default function Accordion(props: Props) {
           key={child.key ?? `accordion-item-${String(index)}`}
           isExpanded={props.expandedIndex === index}
           title={child.props.title}
+          summary={child.props.summary}
           onToggle={(isExpanded: boolean) => {
             props.onExpandedIndexChange(isExpanded ? index : null);
             child.props.onToggle?.(isExpanded);

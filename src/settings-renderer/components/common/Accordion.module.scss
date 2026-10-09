@@ -22,14 +22,22 @@
 }
 
 .header {
+  // Reset the native button look; the header is a full-width row.
+  appearance: none;
+  background: none;
+  border: none;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 12px 0;
 
-  font-weight: bold;
-
+  font-weight: 600;
   opacity: 0.9;
 
   cursor: pointer;
@@ -39,7 +47,20 @@
   }
 }
 
+.summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-weight: 400;
+  font-size: 0.9em;
+  color: $text-muted;
+}
+
 .title {
+  flex-shrink: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

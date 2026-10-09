@@ -11,12 +11,12 @@
 @use '../../variables.scss' as *;
 
 .info {
-  color: $widget-normal;
+  color: $text-muted;
   font-size: 1.2em;
   padding: 0 0.2em;
 
   &:hover {
-    color: $widget-normal-hover;
+    color: $text-normal;
   }
 
   svg {

@@ -287,7 +287,16 @@ export default function MenuList() {
                     }
                   }}
                   onKeyDown={(event) => {
-                    if (event.key === 'Delete' || event.key === 'Backspace') {
+                    // Enter or Space selects, like a click. Deleting needs Cmd so a stray
+                    // Backspace can't remove a whole menu (Cmd+Z still restores it).
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      selectMenu(menu.index);
+                    }
+                    if (
+                      event.metaKey &&
+                      (event.key === 'Delete' || event.key === 'Backspace')
+                    ) {
                       deleteMenu(menu.index);
                     }
                   }}>

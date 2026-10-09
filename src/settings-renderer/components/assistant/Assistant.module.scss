@@ -1,0 +1,481 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//   _  _ ____ _  _ ___  ____                                                           //
+//   |_/  |__| |\ | |  \ |  |    This file belongs to Kando, the cross-platform         //
+//   | \_ |  | | \| |__/ |__|    pie menu. Read more on github.com/kando-menu/kando     //
+//                                                                                      //
+//////////////////////////////////////////////////////////////////////////////////////////
+
+// SPDX-FileCopyrightText: Simon Schneegans <code@simonschneegans.de>
+// SPDX-License-Identifier: MIT
+
+@use '../../variables.scss' as *;
+
+$ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+
+// The panel sits at the bottom of the centre column. Everything above the composer
+// (drawer, proposal, pickers) stacks upward over the preview, never into a new column.
+.assistant {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 24px 16px 24px;
+  color: $text-normal;
+}
+
+// ---- Reference chips -------------------------------------------------------------------
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  margin: 0 2px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid $hairline;
+  background: $surface-card;
+  font-size: 0.92em;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.chipTrigger {
+  color: $coral-text;
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+// ---- Composer --------------------------------------------------------------------------
+
+.composerWrap {
+  position: relative;
+}
+
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid $hairline;
+  background: $base-light;
+
+  &:focus-within {
+    border-color: $text-normal;
+  }
+}
+
+.addItem {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: $surface-card;
+  color: $text-normal;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: #e8e0d2;
+  }
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 14px;
+  cursor: text;
+}
+
+.input {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: $text-normal;
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 2px;
+
+  &::placeholder {
+    color: $text-muted;
+  }
+}
+
+.send {
+  appearance: none;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9999px;
+  background: $key-dark;
+  color: #141413; // ink on coral: 5.63:1
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+
+  &:active {
+    background: $primary-active;
+    color: #ffffff;
+  }
+}
+
+.triggers {
+  display: flex;
+  gap: 16px;
+  padding: 6px 4px 0 4px;
+  font-size: 12px;
+  color: $text-muted;
+
+  b {
+    color: $coral-text;
+    font-weight: 600;
+    margin-right: 2px;
+  }
+
+  .shortcut {
+    margin-left: auto;
+  }
+}
+
+// ---- Popovers above the composer --------------------------------------------------------
+
+.popover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  max-height: 340px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid $hairline;
+  background: $base-light;
+  box-shadow: 0 1px 3px rgba(20, 20, 19, 0.08);
+}
+
+.popoverTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 4px 8px 8px 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.query {
+  font-weight: 400;
+  color: $text-muted;
+}
+
+.popoverFooter {
+  padding: 8px 8px 2px 8px;
+  border-top: 1px solid $hairline;
+  margin-top: 4px;
+  font-size: 12px;
+  color: $text-muted;
+}
+
+.group + .group {
+  margin-top: 4px;
+}
+
+.groupName {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: $text-muted;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 24px auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+
+  &.active {
+    background: $surface-card;
+  }
+}
+
+.rowIcon {
+  display: inline-flex;
+  justify-content: center;
+}
+
+.rowLabel {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rowDetail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: $text-muted;
+}
+
+// "Add item": labelled item types in two columns.
+.typeGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 8px;
+}
+
+.typeButton {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $text-normal;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: $surface-card;
+  }
+
+  & > span {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+}
+
+.typeName {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.typeDetail {
+  font-size: 12px;
+  color: $text-muted;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ---- Proposal ---------------------------------------------------------------------------
+
+.proposal {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid $hairline;
+  background: $surface-soft;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.proposalSummary {
+  margin: 0 0 6px 0;
+  color: $body-text;
+}
+
+.changes {
+  list-style: none;
+  margin: 0 0 10px 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.change {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.changeMark {
+  width: 14px;
+  flex-shrink: 0;
+  font-weight: 600;
+  text-align: center;
+}
+
+.add .changeMark {
+  color: #2f6b3a; // success, darkened to 5.9:1 on surface-soft; paired with the "+" mark
+}
+
+.remove .changeMark {
+  color: #a33a3a;
+}
+
+.proposalActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hint {
+  margin-right: auto;
+  font-size: 12px;
+  color: $text-muted;
+}
+
+.primary,
+.secondary {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.primary {
+  border: none;
+  background: $key-dark;
+  color: #141413;
+
+  &:active {
+    background: $primary-active;
+    color: #ffffff;
+  }
+
+  kbd {
+    font: inherit;
+    font-size: 12px;
+    opacity: 0.75;
+  }
+}
+
+.secondary {
+  border: 1px solid $hairline;
+  background: $base-light;
+  color: $text-normal;
+}
+
+// Collapsed: the last reply as one line that opens the conversation.
+.lastReply {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border: none;
+  background: none;
+  color: $text-muted;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    color: $text-normal;
+  }
+}
+
+.lastReplyText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ---- Conversation drawer ------------------------------------------------------------------
+
+.drawer {
+  max-height: 46vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid $hairline;
+  background: $base-light;
+  animation: drawer-in 250ms $ease-out;
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 14px;
+  border-bottom: 1px solid $hairline;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.iconButton {
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: $text-normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover {
+    background: $surface-card;
+  }
+}
+
+.thread {
+  list-style: none;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.message {
+  max-width: 68ch;
+  color: $body-text;
+
+  &.user {
+    align-self: flex-end;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: $surface-card;
+    color: $text-normal;
+  }
+}

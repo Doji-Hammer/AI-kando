@@ -48,9 +48,9 @@
 
 .name {
   font-family: $font-serif;
-  font-size: 36px;
+  font-size: 24px;
   font-weight: 400;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   line-height: 1.2;
 
   input {
@@ -66,4 +66,56 @@
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
+}
+
+// Replaces the decorative swirl: a plain hairline under the name.
+.divider {
+  height: 1px;
+  margin: 10px 16px 12px 16px;
+  background: $hairline;
+}
+
+// Shown when the selected item is an unaccepted assistant proposal.
+.proposalBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 8px 12px 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed $coral-text;
+  background: $surface-soft;
+  font-size: 13px;
+  line-height: 1.5;
+  color: $body-text;
+
+  b {
+    color: $text-normal;
+    font-weight: 600;
+  }
+}
+
+.proposalButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+
+  button {
+    appearance: none;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid $hairline;
+    background: $base-light;
+    color: $text-normal;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .accept {
+    border: none;
+    background: $key-dark;
+    color: #141413;
+  }
 }

@@ -68,54 +68,39 @@ export default function PreviewHeader() {
     );
   });
 
+  // About, Introduction and Achievements live in the macOS menu bar (Kando › About,
+  // Help › Introduction, Window › Achievements). The toolbar keeps what you use while
+  // editing: undo, redo, themes and settings, with text labels.
+  void setAboutDialogVisible;
+  void setAchievementsDialogVisible;
+  void setIntroDialogVisible;
+  void levelProgress;
+  void enableAchievements;
+
   return (
     <Headerbar
       center={
         <>
-          <span style={{ marginRight: '8px' }}>
-            <Button
-              isGrouped
-              icon={<IoSchool />}
-              tooltip={i18next.t('settings.introduction-dialog.title')}
-              variant="tool"
-              onClick={() => setIntroDialogVisible(true)}
-            />
-            <Button
-              isGrouped
-              icon={<TbInfoSquareRoundedFilled />}
-              tooltip={i18next.t('settings.about-dialog.title')}
-              variant="tool"
-              onClick={() => setAboutDialogVisible(true)}
-            />
+          <span style={{ marginRight: '12px' }}>
+            <UndoRedoButtons />
           </span>
-          <span style={{ marginRight: '8px' }}>
+          <span style={{ display: 'inline-flex', gap: '4px' }}>
             <Button
-              isGrouped
               icon={<TbPaletteFilled />}
-              tooltip={i18next.t('settings.menu-themes-dialog.title')}
+              label={i18next.t('settings.menu-themes-dialog.title')}
+              size="small"
+              tooltip="Menu themes"
               variant="tool"
               onClick={() => setThemesDialogVisible(true)}
             />
             <Button
-              isGrouped
               icon={<TbSettingsFilled />}
-              tooltip={i18next.t('settings.general-settings-dialog.title')}
+              label="Settings"
+              size="small"
+              tooltip="General settings (⌘,)"
               variant="tool"
               onClick={() => setSettingsDialogVisible(true)}
             />
-            {enableAchievements ? (
-              <Button
-                isGrouped
-                hasIndicator={levelProgress.newAchievementsCount > 0}
-                icon={<TbTrophyFilled />}
-                tooltip={i18next.t('settings.achievements-dialog.title')}
-                variant="tool"
-                onClick={() => setAchievementsDialogVisible(true)}
-              />
-            ) : null}
-          </span>
-          <span>
-            <UndoRedoButtons />
           </span>
         </>
       }

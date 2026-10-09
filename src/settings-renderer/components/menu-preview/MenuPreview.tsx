@@ -519,6 +519,11 @@ export default function MenuPreview() {
         className={cx({
           child: true,
           selected: isSelected,
+          // Items the assistant proposed but the user hasn't accepted yet.
+          proposed: Boolean(
+            (centerItem.children[childIndex] as { proposed?: boolean } | undefined)
+              ?.proposed
+          ),
           dragging: isDraggedChild(child),
           dropping: dropInto && dropIndex === child.index,
         })}
@@ -551,7 +556,7 @@ export default function MenuPreview() {
           }
 
           // Delete the item if the user presses the delete key.
-          if (event.key === 'Delete') {
+          if (event.metaKey && (event.key === 'Delete' || event.key === 'Backspace')) {
             deleteMenuItem(selectedMenu, centerItemPath.concat(childIndex));
             selectCenter();
           }

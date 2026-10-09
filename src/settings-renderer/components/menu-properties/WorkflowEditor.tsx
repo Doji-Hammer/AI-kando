@@ -228,18 +228,24 @@ export default function WorkflowEditor() {
           workflow: true,
           active: workflowTypes[selectedWorkflow] === workflowType,
         })}>
-        <div className={classes.workflowTabs}>
+        <div className={classes.workflowTabs} role="tablist">
           {workflowTypes.map((type, index) => (
-            <div
+            <button
               key={type}
+              aria-selected={workflowTypes[selectedWorkflow] === type}
               className={cx({
                 workflowTab: true,
                 active: workflowTypes[selectedWorkflow] === type,
               })}
+              role="tab"
+              type="button"
               onClick={() => setSelectedWorkflow(index)}>
               <span className={classes.workflowIcon}>{workflowMeta[type].icon}</span>
-              <span className={classes.workflowName}>{workflowMeta[type].name}</span>
-            </div>
+              <span className={classes.workflowName}>
+                {/* The tab row already says these are workflows. */}
+                {workflowMeta[type].name.replace(/ Workflow$/, '')}
+              </span>
+            </button>
           ))}
         </div>
 

@@ -27,6 +27,7 @@ import {
   TextInput,
 } from '../common';
 import MenuConditions from './MenuConditions';
+import { useProposalActions } from '../assistant/Assistant';
 import MenuBehavior from './MenuBehavior';
 import WorkflowEditor from './WorkflowEditor';
 
@@ -42,6 +43,7 @@ export default function Properties() {
 
   const editMenu = useMenuSettings((state) => state.editMenu);
   const editMenuItem = useMenuSettings((state) => state.editMenuItem);
+  const { proposal, accept, reject } = useProposalActions();
   const [menuTags, setMenuTags] = React.useState([]);
   const [expandedMenuPropertiesIndex, setExpandedMenuPropertiesIndex] = React.useState<
     number | null
@@ -105,6 +107,25 @@ export default function Properties() {
     );
   };
 
+  // One-line summaries so the closed sections still say what they do.
+  const menu = menus[selectedMenu];
+  const behaviorSummary = [
+    menu?.useFixedPosition ? 'Fixed position' : 'At pointer',
+    menu?.anchored ? 'anchored' : null,
+    menu?.hoverMode ? 'hover mode' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const c = menu?.conditions;
+  const conditionsSummary =
+    [
+      c?.appName ? 'Only in ' + c.appName : null,
+      c?.windowName ? 'window “' + c.windowName + '”' : null,
+      c?.screenArea ? 'screen area' : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') || 'Any app';
+
   return (
     <>
       <Headerbar />
@@ -137,7 +158,23 @@ export default function Properties() {
             }}
           />
         </div>
-        <Swirl marginBottom={10} marginTop={10} variant="2" width="min(250px, 80%)" />
+        {(selectedItem as { proposed?: boolean }).proposed && proposal ? (
+          <div aria-live="polite" className={classes.proposalBanner}>
+            <span>
+              <b>Proposed by the assistant.</b> Fields below are the suggested values.
+            </span>
+            <span className={classes.proposalButtons}>
+              <button type="button" onClick={reject}>
+                Reject
+              </button>
+              <button className={classes.accept} type="button" onClick={accept}>
+                Accept
+              </button>
+            </span>
+          </div>
+        ) : (
+          <div className={classes.divider} />
+        )}
 
         <Scrollbox>
           {isRoot ? (
@@ -159,10 +196,14 @@ export default function Properties() {
               <Accordion
                 expandedIndex={expandedMenuPropertiesIndex}
                 onExpandedIndexChange={setExpandedMenuPropertiesIndex}>
-                <AccordionItem title={i18next.t('settings.menu-behavior')}>
+                <AccordionItem
+                  summary={behaviorSummary}
+                  title={i18next.t('settings.menu-behavior')}>
                   <MenuBehavior />
                 </AccordionItem>
-                <AccordionItem title={i18next.t('settings.menu-conditions')}>
+                <AccordionItem
+                  summary={conditionsSummary}
+                  title={i18next.t('settings.menu-conditions')}>
                   <MenuConditions />
                 </AccordionItem>
               </Accordion>

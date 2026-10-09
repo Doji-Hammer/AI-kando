@@ -70,7 +70,7 @@
 @mixin primary-button {
   @include normal-button;
 
-  color: light-dark($on-primary, $text-normal);
+  color: light-dark(#141413, $text-normal); // ink on coral: 5.63:1
   background-color: light-dark($key-dark, $key-dark);
 
   &:not(.selected):not(:disabled):hover {
