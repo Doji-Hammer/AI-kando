@@ -24,6 +24,6 @@ textarea.picker {
   overflow-x: hidden;
 
   &.invalid {
-    box-shadow: 0 0 15px rgba(255, 64, 64, 1) inset;
+    box-shadow: 0 0 15px #c64545 inset;
   }
 }

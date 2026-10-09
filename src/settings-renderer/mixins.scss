@@ -70,13 +70,15 @@
 @mixin primary-button {
   @include normal-button;
 
-  background-color: light-dark($key-light, $key-dark);
+  color: light-dark($on-primary, $text-normal);
+  background-color: light-dark($key-dark, $key-dark);
 
   &:not(.selected):not(:disabled):hover {
-    background-color: light-dark(
-      color.adjust($key-light, $lightness: -10%),
-      color.adjust($key-dark, $lightness: 10%)
-    );
+    background-color: light-dark($key-dark, color.adjust($key-dark, $lightness: 10%));
+  }
+
+  &:not(.selected):not(:disabled):active {
+    background-color: light-dark($primary-active, $key-dark);
   }
 }
 
@@ -107,16 +109,12 @@
 
   background-color: light-dark($base-light, color.adjust($base-dark, $lightness: 5%));
 
-  box-shadow: 0 2px 4px light-dark(rgba(0, 0, 0, 0.075), rgba(0, 0, 0, 0.2));
-  border: 1.5px solid
-    light-dark(
-      color.adjust($base-light, $lightness: -10%),
-      color.adjust($base-dark, $lightness: -10%)
-    );
+  box-shadow: none;
+  border: 1px solid light-dark($hairline, color.adjust($base-dark, $lightness: -10%));
 
   &:not(.selected):not(:disabled):hover {
     background-color: light-dark(
-      color.adjust($base-light, $lightness: -3%),
+      $surface-soft,
       color.adjust($base-dark, $lightness: 10%)
     );
   }

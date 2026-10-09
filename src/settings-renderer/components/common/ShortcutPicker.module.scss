@@ -30,7 +30,7 @@
     transition: box-shadow 150ms ease;
 
     &.invalid {
-      box-shadow: 0 0 15px rgba(255, 64, 64, 1) inset;
+      box-shadow: 0 0 15px #c64545 inset;
     }
 
     // This class is used to add a pulsing glow to the textarea when recording user input.

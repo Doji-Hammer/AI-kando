@@ -47,7 +47,16 @@
 }
 
 .name {
-  font-size: 1.3rem;
+  font-family: $font-serif;
+  font-size: 36px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+
+  input {
+    font: inherit;
+    letter-spacing: inherit;
+  }
   margin: 0 8px;
   padding: 0 8px;
 }

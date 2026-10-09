@@ -13,8 +13,8 @@
 .modalBackground {
   z-index: 50;
 
-  background-color: light-dark(rgba($base-light, 0.3), rgba($base-dark, 0.3));
-  backdrop-filter: blur(3px);
+  background-color: light-dark(rgba($base-dark, 0.18), rgba($base-dark, 0.3));
+  backdrop-filter: blur(2px);
 
   -webkit-app-region: no-drag;
 
@@ -41,9 +41,10 @@
 
 .modal {
   background-color: $window-background;
-  border-radius: 12px;
+  border-radius: 16px;
+  border: 1px solid light-dark($hairline, transparent);
 
-  box-shadow: 0 0 75px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(20, 20, 19, 0.08);
 
   width: min(95vw, calc(300px + 50vw));
 
@@ -58,6 +59,10 @@
 }
 
 .title {
+  font-family: $font-serif;
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.3px;
   display: flex;
   gap: 10px;
   align-items: center;

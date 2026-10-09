@@ -42,14 +42,13 @@
   margin-bottom: 8px;
   padding: 12px 24px;
 
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
+  margin-left: 12px;
+    margin-right: 12px;
+    border-radius: 8px;
 
-  border-left: 4px solid transparent;
-
-  &.active {
-    border-left: 4px solid $key-dark;
-    background-color: $widget-normal;
+    &.active {
+      background-color: $widget-normal;
+      font-weight: 500;
   }
 }
 

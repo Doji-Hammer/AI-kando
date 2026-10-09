@@ -40,7 +40,7 @@ $backlink-offset: 30cqmin;
   align-items: center;
   flex-grow: 1;
   container-type: size;
-  color: #fff;
+  color: light-dark($text-always-light, #fff);
 
   .preview {
     position: relative;
@@ -55,19 +55,19 @@ $backlink-offset: 30cqmin;
       position: absolute;
       aspect-ratio: 1;
       border-radius: 50%;
-      background-color: light-dark(rgba($base-dark, 0.3), rgba($base-light, 0.3));
+      background-color: light-dark(rgba($base-dark, 0.85), rgba($base-light, 0.3));
       touch-action: none;
       transition: transform 0.2s ease;
       border: 2px solid transparent;
 
       &:hover {
-        background-color: light-dark(rgba($base-dark, 0.4), rgba($base-light, 0.4));
+        background-color: light-dark(rgba($base-dark, 0.95), rgba($base-light, 0.4));
       }
 
       &.selected {
-        border: 2px solid light-dark($key-dark, $key-light);
+        border: 2px solid light-dark($primary-active, $key-light);
         background-color: light-dark(
-          rgba(color.mix(color.adjust($base-dark, $lightness: 10%), $key-dark, 50%), 0.4),
+          $key-dark,
           rgba(
             color.mix(color.adjust($base-light, $lightness: -10%), $key-light, 50%),
             0.4

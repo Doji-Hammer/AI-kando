@@ -15,7 +15,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  color: #fff;
+  color: light-dark($text-always-light, #fff);
 
   .deleteDropOverlay {
     position: absolute;
@@ -44,8 +44,8 @@
     .leftLine {
       background-image: linear-gradient(
         to left,
-        rgba(255, 255, 255, 1) 0%,
-        rgba(255, 255, 255, 0) 80%
+        light-dark($hairline, rgba(255, 255, 255, 1)) 0%,
+        light-dark(rgba($hairline, 0), rgba(255, 255, 255, 0)) 80%
       );
       height: 1px;
       flex-grow: 1;
@@ -54,16 +54,19 @@
     .rightLine {
       background-image: linear-gradient(
         to right,
-        rgba(255, 255, 255, 1) 0%,
-        rgba(255, 255, 255, 0) 80%
+        light-dark($hairline, rgba(255, 255, 255, 1)) 0%,
+        light-dark(rgba($hairline, 0), rgba(255, 255, 255, 0)) 80%
       );
       height: 1px;
       flex-grow: 1;
     }
 
     .title {
-      border: 1px solid rgba(255, 255, 255, 1);
-      background-color: light-dark(rgba($base-dark, 0.3), rgba($base-light, 0.3));
+      border: 1px solid light-dark($hairline, rgba(255, 255, 255, 1));
+      background-color: light-dark($surface-card, rgba($base-light, 0.3));
+      color: light-dark($text-normal, #fff);
+      font-size: 13px;
+      font-weight: 500;
       border-radius: 8px 8px 0 0;
       border-width: 1px 1px 0 1px;
       padding: 5px 10px;
@@ -73,7 +76,7 @@
   .shadow {
     background-image: radial-gradient(
       ellipse at 50% 0%,
-      light-dark(rgba($base-dark, 0.3), rgba($base-light, 0.3)) 10%,
+      light-dark(rgba($base-dark, 0.06), rgba($base-light, 0.3)) 10%,
       light-dark(rgba($base-dark, 0), rgba($base-light, 0)) 70%
     );
     height: 80px;

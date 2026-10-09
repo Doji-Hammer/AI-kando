@@ -17,14 +17,14 @@
   width: min(calc(20px + 2vw), 50px);
   margin: 5px min(calc(4px + 0.4vw), 10px);
   aspect-ratio: 1;
-  background-color: light-dark(rgba($base-dark, 0.3), rgba($base-light, 0.3));
+  background-color: light-dark(rgba($base-dark, 0.85), rgba($base-light, 0.3));
 
   &:active {
     transform: translateY(1px);
   }
 
   &:hover {
-    background-color: light-dark(rgba($base-dark, 0.4), rgba($base-light, 0.3));
+    background-color: light-dark(rgba($base-dark, 0.95), rgba($base-light, 0.3));
   }
 
   &.dragging {
