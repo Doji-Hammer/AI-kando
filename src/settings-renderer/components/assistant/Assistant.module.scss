@@ -16,6 +16,8 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 // (drawer, proposal, pickers) stacks upward over the preview, never into a new column.
 .assistant {
   position: relative;
+  // Above the preview's positioned rings, so the drawer and pickers are never covered.
+  z-index: 5;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -478,4 +480,60 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
     background: $surface-card;
     color: $text-normal;
   }
+}
+
+// ---- Live states ---------------------------------------------------------------------------
+
+.empty {
+  padding: 8px;
+  font-size: 13px;
+  color: $text-muted;
+}
+
+.drawerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.textButton {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: $coral-text;
+  cursor: pointer;
+
+  &:hover {
+    background: $surface-card;
+  }
+}
+
+.thinking {
+  color: $text-muted;
+  font-size: 13px;
+}
+
+.message.error {
+  color: #a33a3a; // error text, 6.1:1 on canvas
+}
+
+.setup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: $surface-soft;
+  font-size: 13px;
+  color: $body-text;
+}
+
+.send:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

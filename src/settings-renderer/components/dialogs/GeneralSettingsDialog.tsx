@@ -35,6 +35,7 @@ import {
 } from '../common';
 import classNames from 'classnames/bind';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
+import AssistantSettings from '../assistant/AssistantSettings';
 import * as classes from './GeneralSettingsDialog.module.scss';
 const cx = classNames.bind(classes);
 
@@ -119,6 +120,13 @@ export default function GeneralSettingsDialog() {
   });
 
   // Categories and their content
+  // The assistant's "Set up" button asks for this dialog to open on the Assistant page.
+  React.useEffect(() => {
+    const open = () => setActiveCategory(1);
+    window.addEventListener('kando/open-assistant-settings', open);
+    return () => window.removeEventListener('kando/open-assistant-settings', open);
+  }, []);
+
   const categories = [
     {
       label: i18next.t('settings.general-settings-dialog.app-settings'),
@@ -295,6 +303,10 @@ export default function GeneralSettingsDialog() {
           />
         </>
       ),
+    },
+    {
+      label: 'Assistant',
+      content: <AssistantSettings />,
     },
     {
       label: i18next.t('settings.general-settings-dialog.menu-behavior'),

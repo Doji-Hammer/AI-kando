@@ -20,7 +20,7 @@ import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import * as classes from './MenuPreview.module.scss';
 const cx = classNames.bind(classes);
 
-import { useAppState, useMenuSettings } from '../../state';
+import { useAppState, useMenuSettings, isProposed } from '../../state';
 import {
   AchievementStatsNumberKeys,
   ChildMenuItem,
@@ -520,10 +520,7 @@ export default function MenuPreview() {
           child: true,
           selected: isSelected,
           // Items the assistant proposed but the user hasn't accepted yet.
-          proposed: Boolean(
-            (centerItem.children[childIndex] as { proposed?: boolean } | undefined)
-              ?.proposed
-          ),
+          proposed: isProposed(centerItem.children[childIndex]),
           dragging: isDraggedChild(child),
           dropping: dropInto && dropIndex === child.index,
         })}

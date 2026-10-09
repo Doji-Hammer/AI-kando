@@ -24,12 +24,18 @@ export {
   useMappedCollectionProperties,
 } from './menu-settings';
 export { useAppState, getSelectedChild } from './app-state';
-export { useAssistant } from './assistant-state';
+export {
+  useAssistant,
+  previewProposal,
+  acceptProposal,
+  rejectProposal,
+  currentCleanMenus,
+  isProposed,
+} from './assistant-state';
 export type {
   Message,
   MessagePart,
   Proposal,
-  ProposedChange,
   Reference,
   ReferenceTrigger,
 } from './assistant-state';

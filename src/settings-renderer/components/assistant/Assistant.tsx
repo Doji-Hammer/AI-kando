@@ -8,8 +8,8 @@
 // SPDX-FileCopyrightText: Simon Schneegans <code@simonschneegans.de>
 // SPDX-License-Identifier: MIT
 
-// PROTOTYPE: layout and interaction only. No model is connected; strings are not yet
-// translated.
+// Strings are English only for now; they move to the locale files once the wording is
+// settled.
 
 import React from 'react';
 import classNames from 'classnames/bind';
@@ -22,16 +22,25 @@ import {
   TbX,
 } from 'react-icons/tb';
 
+import { WindowWithAPIs } from '../../settings-window-api';
+declare const window: WindowWithAPIs;
+
 import * as classes from './Assistant.module.scss';
 const cx = classNames.bind(classes);
 
-import { ActionTypeRegistry } from '../../../common';
+import { ActionTypeRegistry, ChildMenuItem, SubmenuMenuItem } from '../../../common';
 import {
   useAppState,
   useMenuSettings,
   useGeneralSettings,
   useAssistant,
+  previewProposal,
+  acceptProposal,
+  rejectProposal,
+  currentCleanMenus,
+  getSelectedChild,
   MessagePart,
+  Reference,
   ReferenceTrigger,
 } from '../../state';
 import { ThemedIcon } from '../common';
@@ -42,9 +51,9 @@ export function Parts(props: { readonly parts: MessagePart[] }) {
     <>
       {props.parts.map((part, i) =>
         typeof part === 'string' ? (
-          <React.Fragment key={i}>{part}</React.Fragment>
+          <React.Fragment key={'t' + String(i)}>{part}</React.Fragment>
         ) : (
-          <span key={i} className={classes.chip}>
+          <span key={'r' + String(i)} className={classes.chip}>
             <span className={classes.chipTrigger}>{part.trigger}</span>
             {part.label}
           </span>
@@ -57,38 +66,7 @@ export function Parts(props: { readonly parts: MessagePart[] }) {
 /** Accept and reject the pending proposal. Shared by the panel and the properties. */
 export function useProposalActions() {
   const proposal = useAssistant((s) => s.proposal);
-  const setProposal = useAssistant((s) => s.setProposal);
-  const setMessages = useAssistant((s) => s.setMessages);
-  const editMenuItem = useMenuSettings((s) => s.editMenuItem);
-  const deleteMenuItem = useMenuSettings((s) => s.deleteMenuItem);
-  const selectParent = useAppState((s) => s.selectParent);
-
-  const accept = () => {
-    if (!proposal) {
-      return;
-    }
-    // One edit, so one Cmd+Z undoes the whole proposal.
-    editMenuItem(proposal.menuIndex, proposal.itemPath, (item) => {
-      delete (item as { proposed?: boolean }).proposed;
-      return item;
-    });
-    setMessages([
-      ...useAssistant.getState().messages,
-      { role: 'assistant', parts: ['Done. Press ⌘Z to undo.'] },
-    ]);
-    setProposal(null);
-  };
-
-  const reject = () => {
-    if (!proposal) {
-      return;
-    }
-    deleteMenuItem(proposal.menuIndex, proposal.itemPath);
-    selectParent();
-    setProposal(null);
-  };
-
-  return { proposal, accept, reject };
+  return { proposal, accept: acceptProposal, reject: rejectProposal };
 }
 
 type PickerRow = {
@@ -97,155 +75,176 @@ type PickerRow = {
   detail?: string;
   icon?: string;
   iconTheme?: string;
+  reference: Reference;
 };
 
-/** Builds the rows for one reference picker from the real configuration. */
-function usePickerRows(trigger: ReferenceTrigger | null): {
-  title: string;
-  groups: { name: string; rows: PickerRow[] }[];
-} {
+type PickerGroup = { name: string; rows: PickerRow[] };
+
+const WORKFLOWS: { key: string; label: string; detail: string }[] = [
+  {
+    key: 'selectWorkflow',
+    label: 'Select workflow',
+    detail: 'Runs when an item is chosen',
+  },
+  {
+    key: 'hoverWorkflow',
+    label: 'Hover workflow',
+    detail: 'Runs when the pointer rests on an item',
+  },
+  { key: 'openWorkflow', label: 'Open workflow', detail: 'Runs when a submenu opens' },
+  {
+    key: 'activateWorkflow',
+    label: 'Center-click workflow',
+    detail: 'Runs on a click in the centre',
+  },
+];
+
+/** Readable names for the settings people ask about most. Other keys use their name. */
+const SETTING_LABELS: Record<string, string> = {
+  menuTheme: 'Menu theme',
+  zoomFactor: 'Menu scale',
+  fadeInDuration: 'Fade-in time',
+  fadeOutDuration: 'Fade-out time',
+  enableMarkingMode: 'Marking mode',
+  enableTurboMode: 'Turbo mode',
+  hoverModeNeedsConfirmation: 'Hover mode needs confirmation',
+  centerDeadZone: 'Center dead zone',
+  soundTheme: 'Sound theme',
+  soundVolume: 'Sound volume',
+  enableMenuAnimations: 'Menu animations',
+  warpMouse: 'Warp pointer',
+};
+
+const matches = (q: string, ...texts: (string | undefined)[]) =>
+  !q || texts.some((t) => t?.toLowerCase().includes(q.toLowerCase()));
+
+/** Builds the picker rows from the real configuration, filtered by the typed query. */
+function usePickerGroups(trigger: ReferenceTrigger | null, query: string): PickerGroup[] {
   const menus = useMenuSettings((s) => s.menus);
   const general = useGeneralSettings();
 
   if (trigger === '@') {
-    const groups = menus.map((menu) => ({
-      name: menu.root.name,
-      rows: [
-        {
-          key: menu.root.name,
-          label: menu.root.name,
-          detail: 'Menu · ' + (menu.shortcut || 'no shortcut'),
-          icon: menu.root.icon,
-          iconTheme: menu.root.iconTheme,
-        },
-        ...(menu.root.children || []).slice(0, 4).map((child) => ({
-          key: menu.root.name + child.name,
-          label: child.name,
-          detail: menu.root.name + ' › ' + child.name,
-          icon: child.icon,
-          iconTheme: child.iconTheme,
-        })),
-      ],
-    }));
-    return { title: 'Menus and items', groups: groups.slice(0, 2) };
+    return menus
+      .map((menu, menuIndex) => {
+        const rows: PickerRow[] = [];
+        const walk = (
+          item: ChildMenuItem | typeof menu.root,
+          path: number[],
+          trail: string
+        ) => {
+          const label = path.length === 0 ? item.name : trail + ' › ' + item.name;
+          if (matches(query, item.name, label)) {
+            rows.push({
+              key: menuIndex + ':' + path.join(','),
+              label: item.name,
+              detail:
+                path.length === 0 ? 'Menu · ' + (menu.shortcut || 'no shortcut') : label,
+              icon: item.icon,
+              iconTheme: item.iconTheme,
+              reference: { trigger: '@' as const, label, menuIndex, path },
+            });
+          }
+          if ('children' in item) {
+            item.children.forEach((c, i) => walk(c, [...path, i], label));
+          }
+        };
+        walk(menu.root, [], '');
+        return { name: menu.root.name, rows: rows.slice(0, 8) };
+      })
+      .filter((g) => g.rows.length > 0);
   }
 
   if (trigger === '/') {
     const meta = ActionTypeRegistry.getInstance().getAllMetadata();
-    const actions = (Object.keys(meta) as Array<keyof typeof meta>).map((key) => ({
-      key,
-      label: meta[key].name,
-      detail: meta[key].description,
-      icon: meta[key].icon,
-      iconTheme: meta[key].iconTheme,
-    }));
-    return {
-      title: 'Actions and workflows',
-      groups: [
-        {
-          name: 'Workflows',
-          rows: [
-            { key: 'select', label: 'Select workflow', detail: 'Runs when an item is selected' },
-            { key: 'hover', label: 'Hover workflow', detail: 'Runs when the pointer rests on an item' },
-            { key: 'open', label: 'Open workflow', detail: 'Runs when a submenu opens' },
-          ],
-        },
-        { name: 'Actions', rows: actions.slice(0, 5) },
-      ],
-    };
+    return [
+      {
+        name: 'Workflows',
+        rows: WORKFLOWS.filter((w) => matches(query, w.label)).map((w) => ({
+          key: w.key,
+          label: w.label,
+          detail: w.detail,
+          reference: { trigger: '/' as const, label: w.label, key: w.key },
+        })),
+      },
+      {
+        name: 'Actions',
+        rows: (Object.keys(meta) as Array<keyof typeof meta>)
+          .filter((k) => matches(query, meta[k].name, k))
+          .map((k) => ({
+            key: k,
+            label: meta[k].name,
+            detail: meta[k].description,
+            icon: meta[k].icon,
+            iconTheme: meta[k].iconTheme,
+            reference: { trigger: '/' as const, label: meta[k].name, key: k },
+          })),
+      },
+    ].filter((g) => g.rows.length > 0);
   }
 
   if (trigger === '#') {
-    return {
-      title: 'Settings',
-      groups: [
-        {
-          name: 'Menu behavior',
-          rows: [
-            { key: 'marking', label: 'Marking mode', detail: general.enableMarkingMode ? 'On' : 'Off' },
-            { key: 'turbo', label: 'Turbo mode', detail: general.enableTurboMode ? 'On' : 'Off' },
-            { key: 'deadzone', label: 'Center dead zone', detail: String(general.centerDeadZone) + ' px' },
-          ],
-        },
-        {
-          name: 'Appearance',
-          rows: [
-            { key: 'theme', label: 'Menu theme', detail: general.menuTheme },
-            { key: 'scale', label: 'Menu scale', detail: String(general.zoomFactor) + '×' },
-          ],
-        },
-      ],
-    };
+    const hidden = new Set(['version', 'menuThemeColors', 'darkMenuThemeColors']);
+    const rows = Object.entries(general)
+      .filter(([k]) => !hidden.has(k))
+      .map(([k, v]) => ({ k, v, label: SETTING_LABELS[k] ?? k }))
+      .filter(({ k, label }) => matches(query, k, label))
+      .sort((a, b) => Number(!(a.k in SETTING_LABELS)) - Number(!(b.k in SETTING_LABELS)))
+      .slice(0, 10)
+      .map(({ k, v, label }) => ({
+        key: k,
+        label,
+        detail: typeof v === 'boolean' ? (v ? 'On' : 'Off') : String(v),
+        reference: { trigger: '#' as const, label, key: k },
+      }));
+    return rows.length ? [{ name: 'General settings', rows }] : [];
   }
 
-  return { title: '', groups: [] };
+  return [];
 }
 
-/** The "+ Add item" list: every item type with its name, instead of a row of glyphs. */
-function AddItemList() {
-  const meta = ActionTypeRegistry.getInstance().getAllMetadata();
-  const types = [
-    {
-      key: 'submenu',
-      name: 'Submenu',
-      description: 'A nested ring of items',
-      icon: 'submenu-item.svg',
-      iconTheme: 'kando',
-    },
-    ...(Object.keys(meta) as Array<keyof typeof meta>)
-      .filter((k) =>
-        ['execute-command', 'simulate-hotkey', 'execute-macro', 'open-file', 'open-uri', 'open-settings', 'set-clipboard', 'open-menu'].includes(k)
-      )
-      .map((key) => ({ key, ...meta[key] })),
-  ];
+const pickerTitle = (trigger: ReferenceTrigger) =>
+  trigger === '@'
+    ? 'Menus and items'
+    : trigger === '/'
+      ? 'Actions and workflows'
+      : 'Settings';
 
-  return (
-    <div aria-label="Add item" className={classes.popover} role="dialog">
-      <div className={classes.popoverTitle}>Add item to the selected ring</div>
-      <ul className={classes.typeGrid}>
-        {types.map((t) => (
-          <li key={t.key}>
-            <button className={classes.typeButton} type="button">
-              <ThemedIcon name={t.icon} size={20} theme={t.iconTheme} />
-              <span>
-                <span className={classes.typeName}>{t.name}</span>
-                <span className={classes.typeDetail}>{t.description}</span>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className={classes.popoverFooter}>
-        Click to add after the selected item, or drag onto the preview.
-      </div>
-    </div>
-  );
-}
-
-function ReferencePicker(props: { readonly trigger: ReferenceTrigger }) {
-  const { title, groups } = usePickerRows(props.trigger);
+function ReferencePicker(props: {
+  readonly trigger: ReferenceTrigger;
+  readonly groups: PickerGroup[];
+  readonly activeIndex: number;
+  readonly onPick: (row: PickerRow) => void;
+}) {
   const query = useAssistant((s) => s.pickerQuery);
-  let first = true;
+  let n = -1;
 
   return (
-    <div aria-label={title} className={classes.popover} role="listbox">
+    <div
+      aria-label={pickerTitle(props.trigger)}
+      className={classes.popover}
+      role="listbox">
       <div className={classes.popoverTitle}>
         <span className={classes.chipTrigger}>{props.trigger}</span>
-        {title}
+        {pickerTitle(props.trigger)}
         {query ? <span className={classes.query}>“{query}”</span> : null}
       </div>
-      {groups.map((group) => (
+      {props.groups.length === 0 ? <div className={classes.empty}>No matches</div> : null}
+      {props.groups.map((group) => (
         <div key={group.name} className={classes.group}>
           <div className={classes.groupName}>{group.name}</div>
           {group.rows.map((row) => {
-            const isActive = first;
-            first = false;
+            n++;
+            const isActive = n === props.activeIndex;
             return (
               <div
                 key={row.key}
                 aria-selected={isActive}
                 className={cx({ row: true, active: isActive })}
-                role="option">
+                role="option"
+                onMouseDown={(e) => {
+                  e.preventDefault(); // keep focus in the composer
+                  props.onPick(row);
+                }}>
                 <span className={classes.rowIcon}>
                   {row.icon ? (
                     <ThemedIcon name={row.icon} size={18} theme={row.iconTheme} />
@@ -263,50 +262,207 @@ function ReferencePicker(props: { readonly trigger: ReferenceTrigger }) {
   );
 }
 
+/** "+ Add item": every item type by name; clicking adds it to the current ring. */
+function AddItemList(props: { readonly onDone: () => void }) {
+  const selectedMenu = useAppState((s) => s.selectedMenu);
+  const selectedChildPath = useAppState((s) => s.selectedChildPath);
+  const selectChildPath = useAppState((s) => s.selectChildPath);
+  const menus = useMenuSettings((s) => s.menus);
+  const editMenuItem = useMenuSettings((s) => s.editMenuItem);
+
+  const meta = ActionTypeRegistry.getInstance().getAllMetadata();
+  const types = [
+    {
+      key: 'submenu',
+      name: 'Submenu',
+      description: 'A nested ring of items',
+      icon: 'submenu-item.svg',
+      iconTheme: 'kando',
+    },
+    ...(Object.keys(meta) as Array<keyof typeof meta>)
+      .filter((k) =>
+        [
+          'execute-command',
+          'simulate-hotkey',
+          'execute-macro',
+          'open-file',
+          'open-uri',
+          'open-settings',
+          'set-clipboard',
+          'open-menu',
+        ].includes(k)
+      )
+      .map((key) => ({ key, ...meta[key] })),
+  ];
+
+  const add = async (typeKey: string) => {
+    // Same creation path as dragging a type onto the preview.
+    const transfer = new DataTransfer();
+    transfer.setData('kando/new-item-type', typeKey);
+    const item = await ActionTypeRegistry.getInstance().createItem(transfer);
+    if (!item || selectedMenu < 0) {
+      return;
+    }
+    // Add to the ring that is open: the selected submenu (or root), else the parent of
+    // the selected button, right after it.
+    const selected = getSelectedChild(menus, selectedMenu, selectedChildPath);
+    const isRing = selectedChildPath.length === 0 || selected?.type === 'submenu';
+    const parentPath = isRing ? selectedChildPath : selectedChildPath.slice(0, -1);
+    let newIndex = 0;
+    editMenuItem(selectedMenu, parentPath, (parent) => {
+      const ring = parent as SubmenuMenuItem;
+      newIndex = isRing
+        ? ring.children.length
+        : selectedChildPath[selectedChildPath.length - 1] + 1;
+      ring.children.splice(newIndex, 0, item);
+      return parent;
+    });
+    selectChildPath([...parentPath, newIndex]);
+    window.commonAPI.incrementAchievementStats(['addedItems']);
+    props.onDone();
+  };
+
+  return (
+    <div aria-label="Add item" className={classes.popover} role="dialog">
+      <div className={classes.popoverTitle}>Add to the open ring</div>
+      <ul className={classes.typeGrid}>
+        {types.map((t) => (
+          <li key={t.key}>
+            <button
+              className={classes.typeButton}
+              type="button"
+              onClick={() => add(t.key)}>
+              <ThemedIcon name={t.icon} size={20} theme={t.iconTheme} />
+              <span>
+                <span className={classes.typeName}>{t.name}</span>
+                <span className={classes.typeDetail}>{t.description}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className={classes.popoverFooter}>
+        Adds after the selected item. You can also drag files and links onto the preview.
+      </div>
+    </div>
+  );
+}
+
 /**
- * The assistant sits at the bottom of the centre column, under the preview: you ask,
- * and the preview shows the proposed change in the same eye-line.
+ * The assistant sits at the bottom of the centre column, under the preview: you ask, and
+ * the preview shows the proposed change in the same eye-line.
  */
 export default function Assistant() {
+  const config = useAssistant((s) => s.config);
+  const setConfig = useAssistant((s) => s.setConfig);
+  const isBusy = useAssistant((s) => s.isBusy);
+  const setBusy = useAssistant((s) => s.setBusy);
   const isDrawerOpen = useAssistant((s) => s.isDrawerOpen);
   const setDrawerOpen = useAssistant((s) => s.setDrawerOpen);
   const picker = useAssistant((s) => s.picker);
+  const pickerQuery = useAssistant((s) => s.pickerQuery);
   const openPicker = useAssistant((s) => s.openPicker);
+  const setPickerQuery = useAssistant((s) => s.setPickerQuery);
   const isAddItemOpen = useAssistant((s) => s.isAddItemOpen);
   const setAddItemOpen = useAssistant((s) => s.setAddItemOpen);
   const draft = useAssistant((s) => s.draft);
   const setDraft = useAssistant((s) => s.setDraft);
   const messages = useAssistant((s) => s.messages);
   const setMessages = useAssistant((s) => s.setMessages);
-  const { proposal, accept, reject } = useProposalActions();
+  const proposal = useAssistant((s) => s.proposal);
+  const setSettingsDialogVisible = useAppState((s) => s.setSettingsDialogVisible);
+
   const [text, setText] = React.useState('');
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  // Where in `text` the trigger character was typed, while the picker is open.
+  const triggerAt = React.useRef(-1);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  // ⌘K focuses the composer from anywhere in the window.
+  const groups = usePickerGroups(picker, pickerQuery);
+  const rows = groups.flatMap((g) => g.rows);
+
+  React.useEffect(() => {
+    window.settingsAPI.assistantGetConfig().then(setConfig);
+  }, [setConfig]);
+
+  // ⌘K focuses the composer; ⌘↵ accepts a pending proposal.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         inputRef.current?.focus();
       }
+      if (e.metaKey && e.key === 'Enter' && useAssistant.getState().proposal) {
+        e.preventDefault();
+        acceptProposal();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const send = () => {
-    const parts = text ? [...draft, text] : draft;
-    if (parts.length === 0) {
+  const isReady = Boolean(config?.endpoint && config?.model);
+
+  const closePicker = () => {
+    triggerAt.current = -1;
+    openPicker(null);
+  };
+
+  const pick = (row: PickerRow) => {
+    const before = text.slice(0, triggerAt.current);
+    setDraft([...draft, ...(before ? [before] : []), row.reference, ' ']);
+    setText('');
+    closePicker();
+    inputRef.current?.focus();
+  };
+
+  const openSetup = () => {
+    setSettingsDialogVisible(true);
+    setTimeout(() => window.dispatchEvent(new Event('kando/open-assistant-settings')), 0);
+  };
+
+  const send = async () => {
+    const parts = [...draft, ...(text.trim() ? [text] : [])];
+    if (parts.length === 0 || isBusy) {
       return;
     }
-    setMessages([
-      ...messages,
-      { role: 'user', parts },
-      { role: 'assistant', parts: ['(Prototype: no model is connected yet.)'] },
-    ]);
+    if (!isReady) {
+      openSetup();
+      return;
+    }
+    if (proposal) {
+      // A new request replaces a proposal that was neither accepted nor rejected.
+      rejectProposal();
+    }
+
+    const history = [
+      ...messages.filter((m) => !m.isError),
+      { role: 'user' as const, parts },
+    ];
+    setMessages([...messages, { role: 'user', parts }]);
     setDraft([]);
     setText('');
-    setDrawerOpen(true);
+    setBusy(true);
+
+    const app = useAppState.getState();
+    const reply = await window.settingsAPI.assistantSend({
+      history,
+      menus: currentCleanMenus(),
+      settings: useGeneralSettings.getState(),
+      selectedMenu: app.selectedMenu,
+      selectedPath: app.selectedChildPath,
+    });
+
+    setBusy(false);
+    setMessages([
+      ...useAssistant.getState().messages,
+      { role: 'assistant', parts: [reply.text], isError: reply.error },
+    ]);
+    if (reply.proposal) {
+      previewProposal(reply.proposal);
+    } else {
+      setDrawerOpen(true);
+    }
   };
 
   const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
@@ -317,63 +473,99 @@ export default function Assistant() {
         <div className={classes.drawer}>
           <div className={classes.drawerHeader}>
             <span>Conversation</span>
-            <button
-              aria-label="Collapse conversation"
-              className={classes.iconButton}
-              type="button"
-              onClick={() => setDrawerOpen(false)}>
-              <TbChevronDown />
-            </button>
+            <span className={classes.drawerActions}>
+              {messages.length > 0 ? (
+                <button
+                  className={classes.textButton}
+                  type="button"
+                  onClick={() => setMessages([])}>
+                  Clear
+                </button>
+              ) : null}
+              <button
+                aria-label="Collapse conversation"
+                className={classes.iconButton}
+                type="button"
+                onClick={() => setDrawerOpen(false)}>
+                <TbChevronDown />
+              </button>
+            </span>
           </div>
-          <ol className={classes.thread}>
+          <ol aria-live="polite" className={classes.thread}>
             {messages.map((m, i) => (
-              <li key={i} className={cx({ message: true, user: m.role === 'user' })}>
+              <li
+                key={'m' + String(i)}
+                className={cx({
+                  message: true,
+                  user: m.role === 'user',
+                  error: m.isError,
+                })}>
                 <Parts parts={m.parts} />
               </li>
             ))}
+            {isBusy ? <li className={classes.thinking}>Thinking…</li> : null}
           </ol>
         </div>
       ) : null}
 
       {proposal ? (
         <div aria-live="polite" className={classes.proposal}>
-          <p className={classes.proposalSummary}>
-            <Parts parts={proposal.summary} />
-          </p>
+          <p className={classes.proposalSummary}>{proposal.summary}</p>
           <ul className={classes.changes}>
             {proposal.changes.map((c, i) => (
-              <li key={i} className={cx({ change: true, [c.kind]: true })}>
+              <li
+                key={'c' + String(i) + c.text}
+                className={cx({ change: true, [c.kind]: true })}>
                 <span aria-hidden className={classes.changeMark}>
                   {c.kind === 'add' ? '+' : c.kind === 'remove' ? '−' : '~'}
                 </span>
-                <span>
-                  <Parts parts={c.parts} />
-                </span>
+                <span>{c.text}</span>
               </li>
             ))}
           </ul>
           <div className={classes.proposalActions}>
-            <span className={classes.hint}>Shown dashed in the preview</span>
-            <button className={classes.secondary} type="button" onClick={reject}>
+            <span className={classes.hint}>
+              Shown dashed in the preview. Nothing is saved yet.
+            </span>
+            <button className={classes.secondary} type="button" onClick={rejectProposal}>
               <TbX /> Reject
             </button>
-            <button className={classes.primary} type="button" onClick={accept}>
+            <button className={classes.primary} type="button" onClick={acceptProposal}>
               <TbCheck /> Accept <kbd>⌘↵</kbd>
             </button>
           </div>
         </div>
-      ) : !isDrawerOpen && lastAssistant ? (
-        <button className={classes.lastReply} type="button" onClick={() => setDrawerOpen(true)}>
+      ) : !isDrawerOpen && (lastAssistant || isBusy) ? (
+        <button
+          className={classes.lastReply}
+          type="button"
+          onClick={() => setDrawerOpen(true)}>
           <TbChevronUp />
           <span className={classes.lastReplyText}>
-            <Parts parts={lastAssistant.parts} />
+            {isBusy ? 'Thinking…' : <Parts parts={lastAssistant!.parts} />}
           </span>
         </button>
       ) : null}
 
+      {config && !isReady ? (
+        <div className={classes.setup}>
+          <span>Connect a model to use the assistant.</span>
+          <button className={classes.textButton} type="button" onClick={openSetup}>
+            Set up…
+          </button>
+        </div>
+      ) : null}
+
       <div className={classes.composerWrap}>
-        {picker ? <ReferencePicker trigger={picker} /> : null}
-        {isAddItemOpen ? <AddItemList /> : null}
+        {picker ? (
+          <ReferencePicker
+            activeIndex={Math.min(activeIndex, Math.max(rows.length - 1, 0))}
+            groups={groups}
+            trigger={picker}
+            onPick={pick}
+          />
+        ) : null}
+        {isAddItemOpen ? <AddItemList onDone={() => setAddItemOpen(false)} /> : null}
 
         <div className={classes.composer}>
           <button
@@ -383,36 +575,85 @@ export default function Assistant() {
             onClick={() => setAddItemOpen(!isAddItemOpen)}>
             <TbPlus /> Add item
           </button>
-          <div
-            className={classes.field}
-            onClick={() => inputRef.current?.focus()}>
+          <div className={classes.field} onClick={() => inputRef.current?.focus()}>
             <Parts parts={draft} />
             <input
               ref={inputRef}
+              aria-autocomplete="list"
+              aria-expanded={picker !== null}
               aria-label="Ask the assistant"
               className={classes.input}
+              disabled={isBusy}
               placeholder={
-                draft.length ? '' : 'Ask to build or change a menu…'
+                draft.length
+                  ? ''
+                  : isBusy
+                    ? 'Thinking…'
+                    : 'Ask to build or change a menu…'
               }
+              role="combobox"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setText(value);
+                if (picker) {
+                  // Close if the trigger was deleted or a space ends the query.
+                  const q = value.slice(triggerAt.current + 1);
+                  if (value.length <= triggerAt.current || /\s{2}$/.test(q)) {
+                    closePicker();
+                  } else {
+                    setPickerQuery(q);
+                    setActiveIndex(0);
+                  }
+                }
+              }}
               onKeyDown={(e) => {
+                if (picker) {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const d = e.key === 'ArrowDown' ? 1 : -1;
+                    setActiveIndex(
+                      (i) => (i + d + rows.length) % Math.max(rows.length, 1)
+                    );
+                    return;
+                  }
+                  if ((e.key === 'Enter' || e.key === 'Tab') && rows.length > 0) {
+                    e.preventDefault();
+                    pick(rows[Math.min(activeIndex, rows.length - 1)]);
+                    return;
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closePicker();
+                    return;
+                  }
+                }
                 if (e.key === '@' || e.key === '/' || e.key === '#') {
-                  if (text === '' || text.endsWith(' ')) {
+                  const caret = e.currentTarget.selectionStart ?? text.length;
+                  if (caret === 0 || /\s/.test(text[caret - 1])) {
+                    triggerAt.current = caret;
+                    setActiveIndex(0);
                     openPicker(e.key);
                   }
                 }
-                if (e.key === 'Escape') {
-                  openPicker(null);
+                if (e.key === 'Backspace' && text === '' && draft.length > 0) {
+                  // Remove the last chip or text fragment, like a token field.
+                  e.preventDefault();
+                  setDraft(draft.slice(0, -1));
                 }
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && !e.metaKey && !e.shiftKey) {
                   e.preventDefault();
                   send();
                 }
               }}
             />
           </div>
-          <button aria-label="Send" className={classes.send} type="button" onClick={send}>
+          <button
+            aria-label="Send"
+            className={classes.send}
+            disabled={isBusy}
+            type="button"
+            onClick={send}>
             <TbArrowUp />
           </button>
         </div>

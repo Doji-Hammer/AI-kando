@@ -52,6 +52,7 @@ import { IPCServer, IPCCallback } from '../common/ipc';
 import { Notification } from './utils/notification';
 import { UpdateChecker } from './utils/update-checker';
 import { AchievementTracker } from './achievements/achievement-tracker';
+import { registerAssistantIpc } from './assistant/ipc';
 import { supportsIsolatedProcesses } from './utils/shell';
 import { ExportedMenuV2 } from '../common/settings-schemata/exported-menu-v2';
 
@@ -243,6 +244,7 @@ export class KandoApp {
     // Initialize the common IPC communication to the renderer process. This will be
     // available in both the menu window and the settings window.
     this.initCommonRendererAPI();
+    registerAssistantIpc();
 
     // Create and load the main window if it does not exist yet.
     if (!this.generalSettings.get('lazyInitialization')) {

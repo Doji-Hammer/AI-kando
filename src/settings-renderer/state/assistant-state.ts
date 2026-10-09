@@ -10,65 +10,42 @@
 
 import { create } from 'zustand';
 
-/**
- * PROTOTYPE. State for the built-in assistant panel. Nothing here talks to a model yet;
- * the conversation and proposals are placeholders so the layout can be reviewed.
- */
+import type {
+  AssistantConfig,
+  AssistantMessage,
+  AssistantMessagePart,
+  AssistantProposal,
+  AssistantReference,
+} from '../../common/assistant-types';
+import type { Menu, MenuItem } from '../../common';
+import { useMenuSettings } from './menu-settings';
+import { useGeneralSettings } from './general-settings';
+import { useAppState } from './app-state';
 
-/** The three reference triggers the composer understands. */
-export type ReferenceTrigger = '@' | '/' | '#';
+export type ReferenceTrigger = AssistantReference['trigger'];
+export type Reference = AssistantReference;
+export type MessagePart = AssistantMessagePart;
+export type Message = AssistantMessage & { isError?: boolean };
 
-/** A reference chip inside a message: a menu or item, an action or workflow, a setting. */
-export type Reference = {
-  trigger: ReferenceTrigger;
-  label: string;
-};
-
-/** A message is plain text interleaved with reference chips. */
-export type MessagePart = string | Reference;
-
-export type Message = {
-  role: 'user' | 'assistant';
-  parts: MessagePart[];
-};
-
-/** One line in a proposal's change list. */
-export type ProposedChange = {
-  kind: 'add' | 'change' | 'remove';
-  parts: MessagePart[];
-};
-
-/** A pending set of changes the user can accept or reject as one undo step. */
-export type Proposal = {
-  summary: MessagePart[];
-  changes: ProposedChange[];
-  /** Where the proposed item lives, so the preview and properties can show it. */
-  menuIndex: number;
-  itemPath: number[];
-};
+/** A proposal being previewed, with what to restore if the user rejects it. */
+export type Proposal = AssistantProposal & { menusBefore: Menu[] };
 
 type AssistantState = {
-  /** Whether the conversation drawer is expanded over the preview. */
+  config: AssistantConfig | null;
+  isBusy: boolean;
   isDrawerOpen: boolean;
-
-  /** The reference picker that is open above the composer, if any. */
   picker: ReferenceTrigger | null;
-
-  /** Whether the labelled "Add item" list is open. */
-  isAddItemOpen: boolean;
-
-  /** Text typed after the trigger character; filters the picker. */
   pickerQuery: string;
-
-  /** Current draft in the composer. */
+  isAddItemOpen: boolean;
   draft: MessagePart[];
-
   messages: Message[];
-
   proposal: Proposal | null;
 
+  setConfig: (config: AssistantConfig) => void;
+  setBusy: (isBusy: boolean) => void;
   setDrawerOpen: (isOpen: boolean) => void;
   openPicker: (trigger: ReferenceTrigger | null, query?: string) => void;
+  setPickerQuery: (query: string) => void;
   setAddItemOpen: (isOpen: boolean) => void;
   setDraft: (draft: MessagePart[]) => void;
   setMessages: (messages: Message[]) => void;
@@ -76,17 +53,129 @@ type AssistantState = {
 };
 
 export const useAssistant = create<AssistantState>((set) => ({
+  config: null,
+  isBusy: false,
   isDrawerOpen: false,
   picker: null,
-  isAddItemOpen: false,
   pickerQuery: '',
+  isAddItemOpen: false,
   draft: [],
   messages: [],
   proposal: null,
+  setConfig: (config) => set({ config }),
+  setBusy: (isBusy) => set({ isBusy }),
   setDrawerOpen: (isDrawerOpen) => set({ isDrawerOpen }),
-  openPicker: (picker, pickerQuery = '') => set({ picker, pickerQuery, isAddItemOpen: false }),
+  openPicker: (picker, pickerQuery = '') =>
+    set({ picker, pickerQuery, isAddItemOpen: false }),
+  setPickerQuery: (pickerQuery) => set({ pickerQuery }),
   setAddItemOpen: (isAddItemOpen) => set({ isAddItemOpen, picker: null }),
   setDraft: (draft) => set({ draft }),
   setMessages: (messages) => set({ messages }),
   setProposal: (proposal) => set({ proposal }),
 }));
+
+/** Flags on items that only exist while a proposal is previewed. Never saved. */
+type Flagged = { proposed?: boolean; proposedChange?: boolean; children?: Flagged[] };
+
+function itemAt(menu: Menu, path: number[]): Flagged | undefined {
+  let node = menu.root as unknown as Flagged;
+  for (const i of path) {
+    node = node?.children?.[i] as Flagged;
+  }
+  return node;
+}
+
+/** Deep copy without the preview flags. */
+export function stripFlags(menus: Menu[]): Menu[] {
+  const copy = structuredClone(menus);
+  const walk = (node: Flagged) => {
+    delete node.proposed;
+    delete node.proposedChange;
+    node.children?.forEach(walk);
+  };
+  copy.forEach((m) => walk(m.root as unknown as Flagged));
+  return copy;
+}
+
+/** The menus as they are on disk: without any preview flags. */
+export function currentCleanMenus(): Menu[] {
+  return stripFlags(useMenuSettings.getState().menus);
+}
+
+/**
+ * Shows a proposal in the editor without recording it in the undo history and without
+ * saving it (the settings window does not save while a proposal is pending).
+ */
+export function previewProposal(proposal: AssistantProposal) {
+  const menusBefore = currentCleanMenus();
+  const menus = structuredClone(proposal.menusAfter) as Menu[];
+  for (const m of proposal.markers) {
+    const node = menus[m.menuIndex] && itemAt(menus[m.menuIndex], m.path);
+    if (node) {
+      if (m.kind === 'add') {
+        node.proposed = true;
+      } else {
+        node.proposedChange = true;
+      }
+    }
+  }
+
+  // Set the proposal first so the save subscription already skips this state.
+  useAssistant.getState().setProposal({ ...proposal, menusBefore });
+  const temporal = useMenuSettings.temporal.getState();
+  temporal.pause();
+  useMenuSettings.setState({ menus });
+  temporal.resume();
+
+  // Show the first changed item, so the right panel shows its fields.
+  const first = proposal.markers[0];
+  if (first) {
+    const app = useAppState.getState();
+    app.selectMenu(first.menuIndex);
+    if (first.path.length > 0) {
+      app.selectChildPath(first.path);
+    }
+  }
+}
+
+/** Keeps the proposal: one undo step, then saved like any other edit. */
+export function acceptProposal() {
+  const proposal = useAssistant.getState().proposal;
+  if (!proposal) {
+    return;
+  }
+  const after = stripFlags(useMenuSettings.getState().menus);
+
+  // Restore "before" silently (still pending, so not saved), then set "after" with
+  // history on: exactly one undo step and exactly one save.
+  const temporal = useMenuSettings.temporal.getState();
+  temporal.pause();
+  useMenuSettings.setState({ menus: proposal.menusBefore });
+  temporal.resume();
+  useAssistant.getState().setProposal(null);
+  useMenuSettings.setState({ menus: after });
+
+  if (Object.keys(proposal.settingsChanges).length > 0) {
+    useGeneralSettings.setState(proposal.settingsChanges);
+  }
+}
+
+/** Drops the proposal and puts the menus back exactly as they were. */
+export function rejectProposal() {
+  const proposal = useAssistant.getState().proposal;
+  if (!proposal) {
+    return;
+  }
+  useAssistant.getState().setProposal(null);
+  const temporal = useMenuSettings.temporal.getState();
+  temporal.pause();
+  useMenuSettings.setState({ menus: proposal.menusBefore });
+  temporal.resume();
+  useAppState.getState().selectParent();
+}
+
+/** True if the item is drawn as part of a pending proposal. */
+export function isProposed(item: MenuItem | undefined): boolean {
+  const f = item as Flagged | undefined;
+  return Boolean(f?.proposed || f?.proposedChange);
+}

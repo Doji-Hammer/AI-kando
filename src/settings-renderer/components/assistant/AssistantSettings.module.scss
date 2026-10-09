@@ -1,0 +1,153 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//   _  _ ____ _  _ ___  ____                                                           //
+//   |_/  |__| |\ | |  \ |  |    This file belongs to Kando, the cross-platform         //
+//   | \_ |  | | \| |__/ |__|    pie menu. Read more on github.com/kando-menu/kando     //
+//                                                                                      //
+//////////////////////////////////////////////////////////////////////////////////////////
+
+// SPDX-FileCopyrightText: Simon Schneegans <code@simonschneegans.de>
+// SPDX-License-Identifier: MIT
+
+@use '../../variables.scss' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 520px;
+  font-size: 14px;
+}
+
+.intro {
+  margin: 0 0 4px 0;
+  color: $text-muted;
+  line-height: 1.55;
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset {
+  appearance: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid $hairline;
+  border-radius: 9999px;
+  background: $base-light;
+  color: $text-normal;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover {
+    background: $surface-card;
+  }
+}
+
+.field {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 12px;
+
+  input,
+  select {
+    height: 36px;
+    box-sizing: border-box;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid $control-outline;
+    background: $base-light;
+    color: $text-normal;
+    font: inherit;
+    min-width: 0;
+
+    &:focus {
+      outline: 2px solid $text-normal;
+      outline-offset: 1px;
+    }
+
+    &:disabled {
+      color: $text-muted;
+    }
+  }
+}
+
+.keyNote {
+  margin: -4px 0 0 132px;
+  font-size: 12px;
+  color: $text-muted;
+  display: flex;
+  gap: 8px;
+}
+
+.link {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: $coral-text;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.modelRow {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+
+  select {
+    flex: 1;
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.status {
+  margin-right: auto;
+  color: $text-muted;
+}
+
+.error {
+  margin-right: auto;
+  color: #a33a3a; // error, darkened for text: 6.1:1 on canvas
+}
+
+.primary,
+.secondary {
+  appearance: none;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.primary {
+  border: none;
+  background: $key-dark;
+  color: #141413;
+}
+
+.secondary {
+  border: 1px solid $hairline;
+  background: $surface-card;
+  color: $text-normal;
+}

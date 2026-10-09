@@ -13,7 +13,7 @@ import i18next from 'i18next';
 
 import * as classes from './Properties.module.scss';
 
-import { useAppState, useMenuSettings, getSelectedChild } from '../../state';
+import { useAppState, useMenuSettings, getSelectedChild, isProposed } from '../../state';
 import {
   Accordion,
   AccordionItem,
@@ -22,7 +22,6 @@ import {
   SettingsRow,
   TagInput,
   ShortcutPicker,
-  Swirl,
   Scrollbox,
   TextInput,
 } from '../common';
@@ -158,10 +157,11 @@ export default function Properties() {
             }}
           />
         </div>
-        {(selectedItem as { proposed?: boolean }).proposed && proposal ? (
+        {isProposed(selectedItem) && proposal ? (
           <div aria-live="polite" className={classes.proposalBanner}>
             <span>
-              <b>Proposed by the assistant.</b> Fields below are the suggested values.
+              <b>Proposed by the assistant.</b> The fields below show the suggested
+              values. Nothing is saved until you accept.
             </span>
             <span className={classes.proposalButtons}>
               <button type="button" onClick={reject}>

@@ -24,6 +24,7 @@ import {
   useGeneralSettings,
   useMenuSettings,
   getSelectedChild,
+  useAssistant,
 } from './state';
 import { IconThemeRegistry } from '../common/icon-themes/icon-theme-registry';
 import { IPCMenuManager } from './utils/ipc-menu-manager';
@@ -196,6 +197,11 @@ Promise.all([
     });
 
     useMenuSettings.subscribe((newSettings) => {
+      // While the assistant's proposal is only being previewed, nothing is saved. Accept
+      // or reject sets the menus again, which saves the outcome.
+      if (useAssistant.getState().proposal) {
+        return;
+      }
       window.commonAPI.menuSettings.set({
         menus: newSettings.menus,
         collections: newSettings.collections,

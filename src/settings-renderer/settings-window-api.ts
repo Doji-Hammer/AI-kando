@@ -23,6 +23,12 @@ import {
   SettingsWindowSidebarWidths,
 } from '../common';
 import { IPCMenuManager } from './utils/ipc-menu-manager';
+import type {
+  AssistantApiStyle,
+  AssistantConfig,
+  AssistantReply,
+  AssistantRequest,
+} from '../common/assistant-types';
 
 /**
  * These functions are available in the settings window's renderer process. They are
@@ -258,6 +264,49 @@ export const SETTINGS_WINDOW_API = {
     return () => {
       ipcRenderer.off('settings-window.presets-changed', callback);
     };
+  },
+
+  /** Assistant: the endpoint, API format and model. The API key is never returned. */
+  assistantGetConfig: (): Promise<AssistantConfig> => {
+    return ipcRenderer.invoke('settings-window.assistant-get-config');
+  },
+
+  /** Assistant: saves endpoint, API format and model. */
+  assistantSetConfig: (
+    endpoint: string,
+    apiStyle: AssistantApiStyle,
+    model: string
+  ): Promise<AssistantConfig> => {
+    return ipcRenderer.invoke(
+      'settings-window.assistant-set-config',
+      endpoint,
+      apiStyle,
+      model
+    );
+  },
+
+  /** Assistant: stores the API key encrypted in the main process. Empty clears it. */
+  assistantSetKey: (key: string): Promise<AssistantConfig> => {
+    return ipcRenderer.invoke('settings-window.assistant-set-key', key);
+  },
+
+  /** Assistant: asks the endpoint for its models. Unsaved form values may be passed. */
+  assistantListModels: (
+    endpoint?: string,
+    apiStyle?: AssistantApiStyle,
+    key?: string
+  ): Promise<{ models?: string[]; error?: string }> => {
+    return ipcRenderer.invoke(
+      'settings-window.assistant-list-models',
+      endpoint,
+      apiStyle,
+      key
+    );
+  },
+
+  /** Assistant: runs one turn. The reply may carry a proposal to accept or reject. */
+  assistantSend: (request: AssistantRequest): Promise<AssistantReply> => {
+    return ipcRenderer.invoke('settings-window.assistant-send', request);
   },
 };
 
