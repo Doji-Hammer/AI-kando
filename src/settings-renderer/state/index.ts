@@ -31,6 +31,8 @@ export {
   rejectProposal,
   currentCleanMenus,
   isProposed,
+  threadKey,
+  useCurrentThread,
 } from './assistant-state';
 export type {
   Message,

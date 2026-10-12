@@ -410,78 +410,6 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   white-space: nowrap;
 }
 
-// ---- Conversation drawer ------------------------------------------------------------------
-
-.drawer {
-  max-height: 46vh;
-  display: flex;
-  flex-direction: column;
-  border-radius: 12px;
-  border: 1px solid $hairline;
-  background: $base-light;
-  animation: drawer-in 250ms $ease-out;
-}
-
-@keyframes drawer-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-}
-
-.drawerHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 8px 8px 14px;
-  border-bottom: 1px solid $hairline;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.iconButton {
-  appearance: none;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 8px;
-  background: none;
-  color: $text-normal;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-
-  &:hover {
-    background: $surface-card;
-  }
-}
-
-.thread {
-  list-style: none;
-  margin: 0;
-  padding: 12px 14px;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 14px;
-  line-height: 1.55;
-}
-
-.message {
-  max-width: 68ch;
-  color: $body-text;
-
-  &.user {
-    align-self: flex-end;
-    padding: 6px 10px;
-    border-radius: 10px;
-    background: $surface-card;
-    color: $text-normal;
-  }
-}
-
 // ---- Live states ---------------------------------------------------------------------------
 
 .empty {
@@ -490,11 +418,6 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   color: $text-muted;
 }
 
-.drawerActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
 
 .textButton {
   appearance: none;

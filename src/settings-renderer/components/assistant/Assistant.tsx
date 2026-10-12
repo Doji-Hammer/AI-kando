@@ -13,14 +13,7 @@
 
 import React from 'react';
 import classNames from 'classnames/bind';
-import {
-  TbPlus,
-  TbArrowUp,
-  TbChevronUp,
-  TbChevronDown,
-  TbCheck,
-  TbX,
-} from 'react-icons/tb';
+import { TbPlus, TbArrowUp, TbChevronUp, TbCheck, TbX } from 'react-icons/tb';
 
 import { WindowWithAPIs } from '../../settings-window-api';
 declare const window: WindowWithAPIs;
@@ -38,6 +31,8 @@ import {
   acceptProposal,
   rejectProposal,
   currentCleanMenus,
+  threadKey,
+  useCurrentThread,
   getSelectedChild,
   MessagePart,
   Reference,
@@ -357,8 +352,8 @@ export default function Assistant() {
   const setConfig = useAssistant((s) => s.setConfig);
   const isBusy = useAssistant((s) => s.isBusy);
   const setBusy = useAssistant((s) => s.setBusy);
-  const isDrawerOpen = useAssistant((s) => s.isDrawerOpen);
-  const setDrawerOpen = useAssistant((s) => s.setDrawerOpen);
+  const setLeftTab = useAssistant((s) => s.setLeftTab);
+  const leftTab = useAssistant((s) => s.leftTab);
   const picker = useAssistant((s) => s.picker);
   const pickerQuery = useAssistant((s) => s.pickerQuery);
   const openPicker = useAssistant((s) => s.openPicker);
@@ -367,8 +362,8 @@ export default function Assistant() {
   const setAddItemOpen = useAssistant((s) => s.setAddItemOpen);
   const draft = useAssistant((s) => s.draft);
   const setDraft = useAssistant((s) => s.setDraft);
-  const messages = useAssistant((s) => s.messages);
-  const setMessages = useAssistant((s) => s.setMessages);
+  const { messages } = useCurrentThread();
+  const setThread = useAssistant((s) => s.setThread);
   const proposal = useAssistant((s) => s.proposal);
   const setSettingsDialogVisible = useAppState((s) => s.setSettingsDialogVisible);
 
@@ -435,16 +430,19 @@ export default function Assistant() {
       rejectProposal();
     }
 
+    // The conversation belongs to the menu that was selected when it was sent.
+    const app = useAppState.getState();
+    const key = threadKey(app.selectedMenu);
     const history = [
       ...messages.filter((m) => !m.isError),
       { role: 'user' as const, parts },
     ];
-    setMessages([...messages, { role: 'user', parts }]);
+    setThread(key, [...messages, { role: 'user', parts }]);
     setDraft([]);
     setText('');
     setBusy(true);
+    setLeftTab('chat');
 
-    const app = useAppState.getState();
     const reply = await window.settingsAPI.assistantSend({
       history,
       menus: currentCleanMenus(),
@@ -454,14 +452,12 @@ export default function Assistant() {
     });
 
     setBusy(false);
-    setMessages([
-      ...useAssistant.getState().messages,
+    setThread(key, [
+      ...(useAssistant.getState().threads[key] ?? []),
       { role: 'assistant', parts: [reply.text], isError: reply.error },
     ]);
     if (reply.proposal) {
       previewProposal(reply.proposal);
-    } else {
-      setDrawerOpen(true);
     }
   };
 
@@ -469,45 +465,6 @@ export default function Assistant() {
 
   return (
     <section aria-label="Assistant" className={classes.assistant}>
-      {isDrawerOpen ? (
-        <div className={classes.drawer}>
-          <div className={classes.drawerHeader}>
-            <span>Conversation</span>
-            <span className={classes.drawerActions}>
-              {messages.length > 0 ? (
-                <button
-                  className={classes.textButton}
-                  type="button"
-                  onClick={() => setMessages([])}>
-                  Clear
-                </button>
-              ) : null}
-              <button
-                aria-label="Collapse conversation"
-                className={classes.iconButton}
-                type="button"
-                onClick={() => setDrawerOpen(false)}>
-                <TbChevronDown />
-              </button>
-            </span>
-          </div>
-          <ol aria-live="polite" className={classes.thread}>
-            {messages.map((m, i) => (
-              <li
-                key={'m' + String(i)}
-                className={cx({
-                  message: true,
-                  user: m.role === 'user',
-                  error: m.isError,
-                })}>
-                <Parts parts={m.parts} />
-              </li>
-            ))}
-            {isBusy ? <li className={classes.thinking}>Thinking…</li> : null}
-          </ol>
-        </div>
-      ) : null}
-
       {proposal ? (
         <div aria-live="polite" className={classes.proposal}>
           <p className={classes.proposalSummary}>{proposal.summary}</p>
@@ -535,11 +492,12 @@ export default function Assistant() {
             </button>
           </div>
         </div>
-      ) : !isDrawerOpen && (lastAssistant || isBusy) ? (
+      ) : leftTab !== 'chat' && (lastAssistant || isBusy) ? (
+        // The full conversation lives in the left column's Chat tab.
         <button
           className={classes.lastReply}
           type="button"
-          onClick={() => setDrawerOpen(true)}>
+          onClick={() => setLeftTab('chat')}>
           <TbChevronUp />
           <span className={classes.lastReplyText}>
             {isBusy ? 'Thinking…' : <Parts parts={lastAssistant!.parts} />}

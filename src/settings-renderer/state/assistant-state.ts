@@ -33,46 +33,67 @@ export type Proposal = AssistantProposal & { menusBefore: Menu[] };
 type AssistantState = {
   config: AssistantConfig | null;
   isBusy: boolean;
-  isDrawerOpen: boolean;
+  /** Left column: the menu list or the selected menu's conversation. */
+  leftTab: 'menus' | 'chat';
   picker: ReferenceTrigger | null;
   pickerQuery: string;
   isAddItemOpen: boolean;
   draft: MessagePart[];
-  messages: Message[];
+  /** One conversation per menu, keyed by threadKey(). */
+  threads: Record<string, Message[]>;
   proposal: Proposal | null;
 
   setConfig: (config: AssistantConfig) => void;
   setBusy: (isBusy: boolean) => void;
-  setDrawerOpen: (isOpen: boolean) => void;
+  setLeftTab: (tab: 'menus' | 'chat') => void;
   openPicker: (trigger: ReferenceTrigger | null, query?: string) => void;
   setPickerQuery: (query: string) => void;
   setAddItemOpen: (isOpen: boolean) => void;
   setDraft: (draft: MessagePart[]) => void;
-  setMessages: (messages: Message[]) => void;
+  setThread: (key: string, messages: Message[]) => void;
   setProposal: (proposal: Proposal | null) => void;
 };
 
 export const useAssistant = create<AssistantState>((set) => ({
   config: null,
   isBusy: false,
-  isDrawerOpen: false,
+  leftTab: 'menus',
   picker: null,
   pickerQuery: '',
   isAddItemOpen: false,
   draft: [],
-  messages: [],
+  threads: {},
   proposal: null,
   setConfig: (config) => set({ config }),
   setBusy: (isBusy) => set({ isBusy }),
-  setDrawerOpen: (isDrawerOpen) => set({ isDrawerOpen }),
+  setLeftTab: (leftTab) => set({ leftTab }),
   openPicker: (picker, pickerQuery = '') =>
     set({ picker, pickerQuery, isAddItemOpen: false }),
   setPickerQuery: (pickerQuery) => set({ pickerQuery }),
   setAddItemOpen: (isAddItemOpen) => set({ isAddItemOpen, picker: null }),
   setDraft: (draft) => set({ draft }),
-  setMessages: (messages) => set({ messages }),
+  setThread: (key, messages) =>
+    set((state) => ({ threads: { ...state.threads, [key]: messages } })),
   setProposal: (proposal) => set({ proposal }),
 }));
+
+/**
+ * Conversations belong to a menu. Menus have no stable ID, so the root name is the key:
+ * renaming a menu starts a new conversation.
+ */
+export function threadKey(menuIndex: number): string {
+  const menu = useMenuSettings.getState().menus[menuIndex];
+  return menu ? menu.root.name : '';
+}
+
+/** The selected menu's conversation, re-rendering when it or the selection changes. */
+export function useCurrentThread(): { key: string; messages: Message[] } {
+  const selectedMenu = useAppState((s) => s.selectedMenu);
+  const name = useMenuSettings((s) => s.menus[selectedMenu]?.root.name ?? '');
+  const messages = useAssistant((s) => s.threads[name]);
+  return { key: name, messages: messages ?? EMPTY };
+}
+const EMPTY: Message[] = [];
 
 /** Flags on items that only exist while a proposal is previewed. Never saved. */
 type Flagged = { proposed?: boolean; proposedChange?: boolean; children?: Flagged[] };

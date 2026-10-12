@@ -1,0 +1,172 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//   _  _ ____ _  _ ___  ____                                                           //
+//   |_/  |__| |\ | |  \ |  |    This file belongs to Kando, the cross-platform         //
+//   | \_ |  | | \| |__/ |__|    pie menu. Read more on github.com/kando-menu/kando     //
+//                                                                                      //
+//////////////////////////////////////////////////////////////////////////////////////////
+
+// SPDX-FileCopyrightText: Simon Schneegans <code@simonschneegans.de>
+// SPDX-License-Identifier: MIT
+
+@use '../../variables.scss' as *;
+
+.panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// Two tabs as a segmented control: same height and radius as the app's other controls.
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin: 8px 8px 6px 0;
+  padding: 2px;
+  border-radius: 10px;
+  background: $surface-card;
+  -webkit-app-region: no-drag;
+}
+
+.tab {
+  appearance: none;
+  flex: 1;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: $text-muted;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover {
+    color: $text-normal;
+  }
+
+  &.active {
+    background: $base-light;
+    color: $text-normal;
+    box-shadow: 0 1px 2px rgba(20, 20, 19, 0.08);
+  }
+}
+
+.count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  background: $hairline;
+  color: $text-normal;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// ---- Chat history --------------------------------------------------------------------------
+
+.chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: $window-background;
+  border-top-left-radius: 12px;
+  border-top: $area-border;
+  border-left: $area-border;
+}
+
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid $hairline;
+}
+
+.chatTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.clear {
+  appearance: none;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: $coral-text;
+  cursor: pointer;
+
+  &:hover {
+    background: $surface-card;
+  }
+}
+
+.empty {
+  margin: 16px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: $text-muted;
+}
+
+.thread {
+  list-style: none;
+  margin: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.message {
+  color: $body-text;
+  overflow-wrap: anywhere;
+
+  &.user {
+    align-self: flex-end;
+    max-width: 90%;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: $surface-card;
+    color: $text-normal;
+  }
+
+  &.error {
+    color: #a33a3a; // error text, 6.1:1 on canvas
+  }
+}
+
+.thinking {
+  color: $text-muted;
+  font-size: 13px;
+}
+
+.end {
+  height: 0;
+}

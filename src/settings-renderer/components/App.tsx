@@ -25,7 +25,8 @@ import {
   MenuThemesDialog,
   IntroDialog,
 } from './dialogs';
-import { MenuList, CollectionList } from './menu-list';
+import { CollectionList } from './menu-list';
+import LeftPanel from './assistant/LeftPanel';
 import { MenuPreview, PreviewHeader } from './menu-preview';
 import Assistant from './assistant/Assistant';
 import { Properties } from './menu-properties';
@@ -140,7 +141,7 @@ export default function App() {
             position="left"
             onWidthChanged={onLeftSidebarWidthChanged}>
             <CollectionList />
-            <MenuList />
+            <LeftPanel />
           </Sidebar>
           <div
             className={cx({
