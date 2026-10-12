@@ -33,6 +33,8 @@ export {
   isProposed,
   threadKey,
   useCurrentThread,
+  referenceForItem,
+  addReferenceToDraft,
 } from './assistant-state';
 export type {
   Message,

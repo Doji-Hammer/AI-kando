@@ -33,6 +33,8 @@ import {
   currentCleanMenus,
   threadKey,
   useCurrentThread,
+  referenceForItem,
+  addReferenceToDraft,
   getSelectedChild,
   MessagePart,
   Reference,
@@ -347,6 +349,63 @@ function AddItemList(props: { readonly onDone: () => void }) {
  * The assistant sits at the bottom of the centre column, under the preview: you ask, and
  * the preview shows the proposed change in the same eye-line.
  */
+/**
+ * Lets a menu item be dragged from the preview onto the chat to mark it as the target:
+ * the drop adds an @ chip for it to the composer. The item itself does not move.
+ */
+export function useReferenceDrop(onDropped?: () => void) {
+  const [isOver, setIsOver] = React.useState(false);
+  const depth = React.useRef(0);
+  const accepts = (e: React.DragEvent) =>
+    e.dataTransfer.types.includes('kando/child-path');
+
+  return {
+    isOver,
+    handlers: {
+      onDragEnter: (e: React.DragEvent) => {
+        if (accepts(e)) {
+          depth.current += 1;
+          setIsOver(true);
+          e.preventDefault();
+        }
+      },
+      onDragOver: (e: React.DragEvent) => {
+        if (accepts(e)) {
+          e.dataTransfer.dropEffect = 'copy';
+          e.preventDefault();
+        }
+      },
+      onDragLeave: (e: React.DragEvent) => {
+        if (accepts(e)) {
+          depth.current = Math.max(0, depth.current - 1);
+          if (depth.current === 0) {
+            setIsOver(false);
+          }
+        }
+      },
+      onDrop: (e: React.DragEvent) => {
+        depth.current = 0;
+        setIsOver(false);
+        const data = e.dataTransfer.getData('kando/child-path');
+        if (!data) {
+          return;
+        }
+        e.preventDefault();
+        // The preview resets its drag state on this event when a drop lands elsewhere.
+        window.dispatchEvent(new CustomEvent('kando/menu-item-drag-end'));
+        const ref = referenceForItem(
+          useAppState.getState().selectedMenu,
+          JSON.parse(data) as number[]
+        );
+        if (ref) {
+          addReferenceToDraft(ref);
+          onDropped?.();
+        }
+      },
+    },
+  };
+}
+
 export default function Assistant() {
   const config = useAssistant((s) => s.config);
   const setConfig = useAssistant((s) => s.setConfig);
@@ -373,6 +432,7 @@ export default function Assistant() {
   const triggerAt = React.useRef(-1);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  const drop = useReferenceDrop(() => inputRef.current?.focus());
   const groups = usePickerGroups(picker, pickerQuery);
   const rows = groups.flatMap((g) => g.rows);
 
@@ -392,8 +452,13 @@ export default function Assistant() {
         acceptProposal();
       }
     };
+    const onFocus = () => inputRef.current?.focus();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('kando/focus-composer', onFocus);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('kando/focus-composer', onFocus);
+    };
   }, []);
 
   const isReady = Boolean(config?.endpoint && config?.model);
@@ -525,7 +590,9 @@ export default function Assistant() {
         ) : null}
         {isAddItemOpen ? <AddItemList onDone={() => setAddItemOpen(false)} /> : null}
 
-        <div className={classes.composer}>
+        <div
+          className={cx({ composer: true, dropTarget: drop.isOver })}
+          {...drop.handlers}>
           <button
             aria-expanded={isAddItemOpen}
             className={classes.addItem}

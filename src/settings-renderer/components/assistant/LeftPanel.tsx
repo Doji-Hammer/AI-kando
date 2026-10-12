@@ -22,7 +22,7 @@ import {
   useAppState,
   useMenuSettings,
 } from '../../state';
-import { Parts } from './Assistant';
+import { Parts, useReferenceDrop } from './Assistant';
 
 /** The selected menu's conversation with the assistant. */
 function ChatHistory() {
@@ -30,6 +30,9 @@ function ChatHistory() {
   const isBusy = useAssistant((s) => s.isBusy);
   const setThread = useAssistant((s) => s.setThread);
   const end = React.useRef<HTMLLIElement>(null);
+  const drop = useReferenceDrop(() =>
+    window.dispatchEvent(new Event('kando/focus-composer'))
+  );
 
   // Keep the newest message in view.
   React.useEffect(() => {
@@ -37,7 +40,7 @@ function ChatHistory() {
   }, [messages.length, isBusy]);
 
   return (
-    <div className={classes.chat}>
+    <div className={cx({ chat: true, dropTarget: drop.isOver })} {...drop.handlers}>
       <div className={classes.chatHeader}>
         <span className={classes.chatTitle}>{key || 'No menu selected'}</span>
         {messages.length > 0 ? (
@@ -53,7 +56,7 @@ function ChatHistory() {
         {messages.length === 0 && !isBusy ? (
           <p className={classes.empty}>
             No conversation about this menu yet. Ask below the preview, and the answers
-            appear here.
+            appear here. Drag an item from the preview onto the chat to ask about it.
           </p>
         ) : (
           <ol aria-live="polite" className={classes.thread}>

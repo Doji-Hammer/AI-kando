@@ -66,6 +66,13 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   &:focus-within {
     border-color: $text-normal;
   }
+
+  // A menu item is dragged over the composer: dropping it adds an @ chip.
+  &.dropTarget {
+    border-color: $coral-text;
+    border-style: dashed;
+    background: $surface-soft;
+  }
 }
 
 .addItem {

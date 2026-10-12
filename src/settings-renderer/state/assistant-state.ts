@@ -95,6 +95,43 @@ export function useCurrentThread(): { key: string; messages: Message[] } {
 }
 const EMPTY: Message[] = [];
 
+/**
+ * An @ reference to a menu item, labelled like the @ picker labels it ("Menu › Child").
+ * Returns null if the path does not point at an item.
+ */
+export function referenceForItem(menuIndex: number, path: number[]): Reference | null {
+  const menu = useMenuSettings.getState().menus[menuIndex];
+  if (!menu) {
+    return null;
+  }
+  const names = [menu.root.name];
+  let node = menu.root as { name: string; children?: { name: string }[] };
+  for (const i of path) {
+    const child = node.children?.[i];
+    if (!child) {
+      return null;
+    }
+    names.push(child.name);
+    node = child;
+  }
+  return { trigger: '@', label: names.join(' › '), menuIndex, path };
+}
+
+/** Appends a reference chip to the composer, unless the draft already ends with it. */
+export function addReferenceToDraft(reference: Reference) {
+  const { draft, setDraft } = useAssistant.getState();
+  const same = draft.some(
+    (p) =>
+      typeof p !== 'string' &&
+      p.trigger === reference.trigger &&
+      p.menuIndex === reference.menuIndex &&
+      JSON.stringify(p.path) === JSON.stringify(reference.path)
+  );
+  if (!same) {
+    setDraft([...draft, reference, ' ']);
+  }
+}
+
 /** Flags on items that only exist while a proposal is previewed. Never saved. */
 type Flagged = { proposed?: boolean; proposedChange?: boolean; children?: Flagged[] };
 
