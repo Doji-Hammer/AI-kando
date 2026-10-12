@@ -43,12 +43,12 @@
   padding: 12px 24px;
 
   margin-left: 12px;
-    margin-right: 12px;
-    border-radius: 8px;
+  margin-right: 12px;
+  border-radius: 8px;
 
-    &.active {
-      background-color: $widget-normal;
-      font-weight: 500;
+  &.active {
+    background-color: $widget-normal;
+    font-weight: 500;
   }
 }
 

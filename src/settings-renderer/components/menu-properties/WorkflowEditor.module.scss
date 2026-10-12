@@ -78,7 +78,10 @@
 
     &:not(.active):hover {
       color: $text-normal;
-      background-color: light-dark($surface-soft, color.adjust($base-dark, $lightness: 3%));
+      background-color: light-dark(
+        $surface-soft,
+        color.adjust($base-dark, $lightness: 3%)
+      );
     }
   }
 }
