@@ -42,7 +42,7 @@
 .themeCard {
   position: relative;
   background-color: $widget-normal;
-  border-radius: $radius-md;
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -147,7 +147,7 @@ $gradient-end: light-dark(rgba(255, 255, 255, 0), rgba(0, 0, 0, 0));
     color: $text-normal;
     border: none;
     border-radius: 0;
-    border-radius: $radius-xs 0 0 $radius-xs;
+    border-radius: 5px 0 0 5px;
 
     padding: 5px 10px;
     font-size: 1rem;

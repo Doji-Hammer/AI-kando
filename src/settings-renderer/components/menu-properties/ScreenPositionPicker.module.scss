@@ -33,7 +33,7 @@
   position: relative;
   width: 250px;
   aspect-ratio: 16/9;
-  border-radius: $radius-xs;
+  border-radius: 5px;
   margin: 10px auto 20px auto;
   border: 2px solid $text-link;
   background-color: light-dark(rgba($key-dark, 0.1), rgba($key-light, 0.1));

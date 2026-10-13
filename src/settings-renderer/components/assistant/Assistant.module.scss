@@ -10,6 +10,8 @@
 
 @use '../../variables.scss' as *;
 
+$ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+
 // The panel sits at the bottom of the centre column. Everything above the composer
 // (drawer, proposal, pickers) stacks upward over the preview, never into a new column.
 .assistant {
@@ -31,7 +33,7 @@
   gap: 1px;
   margin: 0 2px;
   padding: 0 6px;
-  border-radius: $radius-xs;
+  border-radius: 6px;
   border: 1px solid $hairline;
   background: $surface-card;
   font-size: 0.92em;
@@ -41,7 +43,7 @@
 }
 
 .chipTrigger {
-  color: $clay-text;
+  color: $coral-text;
   font-weight: 600;
   margin-right: 2px;
 }
@@ -57,10 +59,9 @@
   align-items: center;
   gap: 8px;
   padding: 6px;
-  border-radius: $radius-lg;
-  border: 1px solid transparent;
+  border-radius: 12px;
+  border: 1px solid $hairline;
   background: $base-light;
-  box-shadow: $shadow-soft;
 
   &:focus-within {
     border-color: $text-normal;
@@ -68,7 +69,7 @@
 
   // A menu item is dragged over the composer: dropping it adds an @ chip.
   &.dropTarget {
-    border-color: $clay-text;
+    border-color: $coral-text;
     border-style: dashed;
     background: $surface-soft;
   }
@@ -83,7 +84,7 @@
   height: 32px;
   padding: 0 10px;
   border: none;
-  border-radius: $radius-md;
+  border-radius: 8px;
   background: $surface-card;
   color: $text-normal;
   font: inherit;
@@ -93,7 +94,7 @@
 
   &:hover,
   &[aria-expanded='true'] {
-    background: $surface-cream-strong;
+    background: #e8e0d2;
   }
 }
 
@@ -132,7 +133,7 @@
   border: none;
   border-radius: 9999px;
   background: $key-dark;
-  color: #1f1d1a; // ink on clay: 5.63:1
+  color: #141413; // ink on coral: 5.63:1
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -153,7 +154,7 @@
   color: $text-muted;
 
   b {
-    color: $clay-text;
+    color: $coral-text;
     font-weight: 600;
     margin-right: 2px;
   }
@@ -174,10 +175,10 @@
   max-height: 340px;
   overflow: auto;
   padding: 8px;
-  border-radius: $radius-lg;
+  border-radius: 12px;
   border: 1px solid $hairline;
   background: $base-light;
-  box-shadow: $shadow-raised;
+  box-shadow: 0 1px 3px rgba(20, 20, 19, 0.08);
 }
 
 .popoverTitle {
@@ -219,7 +220,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: $radius-md;
+  border-radius: 8px;
   font-size: 14px;
 
   &.active {
@@ -264,7 +265,7 @@
   gap: 10px;
   padding: 6px 8px;
   border: none;
-  border-radius: $radius-md;
+  border-radius: 8px;
   background: transparent;
   color: $text-normal;
   font: inherit;
@@ -298,9 +299,9 @@
 // ---- Proposal ---------------------------------------------------------------------------
 
 .proposal {
-  padding: 14px 16px;
-  border-radius: $radius-lg;
-  border: none;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid $hairline;
   background: $surface-soft;
   font-size: 14px;
   line-height: 1.55;
@@ -332,11 +333,11 @@
 }
 
 .add .changeMark {
-  color: $sage-text; // success, darkened to 5.9:1 on surface-soft; paired with the "+" mark
+  color: #2f6b3a; // success, darkened to 5.9:1 on surface-soft; paired with the "+" mark
 }
 
 .remove .changeMark {
-  color: $error-text;
+  color: #a33a3a;
 }
 
 .proposalActions {
@@ -359,7 +360,7 @@
   gap: 6px;
   height: 32px;
   padding: 0 14px;
-  border-radius: $radius-md;
+  border-radius: 8px;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -369,7 +370,7 @@
 .primary {
   border: none;
   background: $key-dark;
-  color: #1f1d1a;
+  color: #141413;
 
   &:active {
     background: $primary-active;
@@ -429,11 +430,11 @@
   border: none;
   background: none;
   padding: 4px 6px;
-  border-radius: $radius-sm;
+  border-radius: 6px;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
-  color: $clay-text;
+  color: $coral-text;
   cursor: pointer;
 
   &:hover {
@@ -447,7 +448,7 @@
 }
 
 .message.error {
-  color: $error-text; // error text, 6.1:1 on canvas
+  color: #a33a3a; // error text, 6.1:1 on canvas
 }
 
 .setup {
@@ -455,7 +456,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  border-radius: $radius-md;
+  border-radius: 8px;
   background: $surface-soft;
   font-size: 13px;
   color: $body-text;

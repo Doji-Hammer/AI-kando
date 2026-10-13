@@ -35,9 +35,9 @@
 .actionItem {
   position: relative;
   background-color: light-dark($base-light, color.adjust($base-dark, $lightness: 5%));
-  border-radius: $radius-md;
+  border-radius: 8px;
 
-  box-shadow: $shadow-soft;
+  box-shadow: 0 2px 4px light-dark(rgba(0, 0, 0, 0.075), rgba(0, 0, 0, 0.2));
   border: 1.5px solid
     light-dark(
       color.adjust($base-light, $lightness: -10%),

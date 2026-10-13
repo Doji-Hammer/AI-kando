@@ -87,10 +87,10 @@ h1 {
 }
 
 .react-tooltip {
-  background: light-dark(#22201c, #000) !important;
-  color: #f8f5ee !important;
+  background: light-dark(#181715, #000) !important;
+  color: #faf9f5 !important;
   max-width: 300px;
-  border-radius: $radius-sm !important;
+  border-radius: 8px !important;
 }
 
 // Tweak global focus outline.
@@ -127,7 +127,7 @@ input[type='number'] {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: light-dark(#8c867b, rgba(128, 128, 128, 0.5));
+  background-color: light-dark(#8e8b82, rgba(128, 128, 128, 0.5));
   border-radius: 3px;
 }
 

@@ -58,7 +58,7 @@
     height: 36px;
     box-sizing: border-box;
     padding: 0 10px;
-    border-radius: $radius-md;
+    border-radius: 8px;
     border: 1px solid $control-outline;
     background: $base-light;
     color: $text-normal;
@@ -90,7 +90,7 @@
   background: none;
   padding: 0;
   font: inherit;
-  color: $clay-text;
+  color: $coral-text;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -120,7 +120,7 @@
 
 .error {
   margin-right: auto;
-  color: $error-text; // error, darkened for text: 6.1:1 on canvas
+  color: #a33a3a; // error, darkened for text: 6.1:1 on canvas
 }
 
 .primary,
@@ -128,7 +128,7 @@
   appearance: none;
   height: 36px;
   padding: 0 16px;
-  border-radius: $radius-md;
+  border-radius: 8px;
   font: inherit;
   font-weight: 500;
   cursor: pointer;
@@ -143,7 +143,7 @@
 .primary {
   border: none;
   background: $key-dark;
-  color: #1f1d1a;
+  color: #141413;
 }
 
 .secondary {

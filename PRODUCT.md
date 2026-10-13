@@ -23,7 +23,7 @@ Success: a power user can describe a change in one sentence, see exactly what th
 
 ## Brand Personality
 
-Calm, soft, precise. Quiet and confident, like Things 3 or iA Writer. The Organic design system (Warm Editorial made softer: warm paper, clay and sage, rounder shapes, soft shadows) does the talking; the interface stays out of the way.
+Calm, editorial, precise. Quiet and confident, like Things 3 or iA Writer. The warm Warm Editorial look does the talking; the interface stays out of the way.
 
 ## Anti-references
 
@@ -42,4 +42,4 @@ Calm, soft, precise. Quiet and confident, like Things 3 or iA Writer. The Organi
 
 ## Accessibility & Inclusion
 
-WCAG 2.2 AA: 4.5:1 text contrast, full keyboard use, visible focus, reduced-motion support. The Organic palette meets these: ink on the clay button is 5.03:1, clay links are 5.84:1 on canvas.
+WCAG 2.2 AA: 4.5:1 text contrast, full keyboard use, visible focus, reduced-motion support. Known source-palette misses (coral button label 3.28:1, coral links 3.11:1) must be fixed or justified.
