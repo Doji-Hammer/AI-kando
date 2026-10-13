@@ -27,7 +27,7 @@
   background-color: $widget-normal;
 
   border: none;
-  border-radius: 8px;
+  border-radius: $radius-md;
   box-sizing: border-box;
 
   cursor: text;
@@ -46,7 +46,7 @@
   color: $text-normal;
   background-color: $widget-normal;
 
-  border-radius: 8px;
+  border-radius: $radius-md;
   box-sizing: border-box;
   border: none;
 
@@ -70,7 +70,7 @@
 @mixin primary-button {
   @include normal-button;
 
-  color: light-dark(#141413, $text-normal); // ink on coral: 5.63:1
+  color: light-dark(#1f1d1a, $text-normal); // ink on clay: 5.63:1
   background-color: light-dark($key-dark, $key-dark);
 
   &:not(.selected):not(:disabled):hover {

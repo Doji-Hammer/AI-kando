@@ -29,6 +29,6 @@
   input {
     @include text-input;
     width: 100%;
-    border-radius: 5px 0 0 5px;
+    border-radius: $radius-xs 0 0 $radius-xs;
   }
 }

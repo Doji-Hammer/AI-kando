@@ -41,7 +41,7 @@
   position: relative;
   width: 250px;
   aspect-ratio: 16/9;
-  border-radius: 5px;
+  border-radius: $radius-xs;
   margin: 10px auto;
   border: 2px solid $text-link;
   background-color: light-dark(rgba($key-dark, 0.1), rgba($key-light, 0.1));

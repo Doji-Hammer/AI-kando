@@ -78,14 +78,14 @@ $backlink-offset: 30cqmin;
 
     // A proposal from the assistant: outlined, not filled, until the user accepts it.
     .child.proposed {
-      color: $coral-text;
+      color: $clay-text;
       background-color: rgba($key-dark, 0.14);
-      border: 2px dashed $coral-text;
+      border: 2px dashed $clay-text;
 
       &.selected {
-        color: $coral-text;
+        color: $clay-text;
         background-color: rgba($key-dark, 0.24);
-        border: 2px dashed $coral-text;
+        border: 2px dashed $clay-text;
       }
     }
 

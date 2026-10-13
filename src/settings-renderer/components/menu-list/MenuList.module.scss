@@ -24,7 +24,7 @@
   flex-direction: column;
   min-height: 0px; // This is important to make the scrollboxes work.
   background-color: $window-background;
-  border-top-left-radius: 12px;
+  border-top-left-radius: $radius-xl;
   flex-grow: 1;
   border-top: $area-border;
   border-left: $area-border;

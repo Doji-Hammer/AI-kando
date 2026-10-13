@@ -10,8 +10,6 @@
 
 @use '../../variables.scss' as *;
 
-$ease-out: cubic-bezier(0.25, 1, 0.5, 1);
-
 // The panel sits at the bottom of the centre column. Everything above the composer
 // (drawer, proposal, pickers) stacks upward over the preview, never into a new column.
 .assistant {
@@ -33,7 +31,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   gap: 1px;
   margin: 0 2px;
   padding: 0 6px;
-  border-radius: 6px;
+  border-radius: $radius-xs;
   border: 1px solid $hairline;
   background: $surface-card;
   font-size: 0.92em;
@@ -43,7 +41,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .chipTrigger {
-  color: $coral-text;
+  color: $clay-text;
   font-weight: 600;
   margin-right: 2px;
 }
@@ -59,9 +57,10 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   align-items: center;
   gap: 8px;
   padding: 6px;
-  border-radius: 12px;
-  border: 1px solid $hairline;
+  border-radius: $radius-lg;
+  border: 1px solid transparent;
   background: $base-light;
+  box-shadow: $shadow-soft;
 
   &:focus-within {
     border-color: $text-normal;
@@ -69,7 +68,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 
   // A menu item is dragged over the composer: dropping it adds an @ chip.
   &.dropTarget {
-    border-color: $coral-text;
+    border-color: $clay-text;
     border-style: dashed;
     background: $surface-soft;
   }
@@ -84,7 +83,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   height: 32px;
   padding: 0 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: $radius-md;
   background: $surface-card;
   color: $text-normal;
   font: inherit;
@@ -94,7 +93,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 
   &:hover,
   &[aria-expanded='true'] {
-    background: #e8e0d2;
+    background: $surface-cream-strong;
   }
 }
 
@@ -133,7 +132,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   border: none;
   border-radius: 9999px;
   background: $key-dark;
-  color: #141413; // ink on coral: 5.63:1
+  color: #1f1d1a; // ink on clay: 5.63:1
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -154,7 +153,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   color: $text-muted;
 
   b {
-    color: $coral-text;
+    color: $clay-text;
     font-weight: 600;
     margin-right: 2px;
   }
@@ -175,10 +174,10 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   max-height: 340px;
   overflow: auto;
   padding: 8px;
-  border-radius: 12px;
+  border-radius: $radius-lg;
   border: 1px solid $hairline;
   background: $base-light;
-  box-shadow: 0 1px 3px rgba(20, 20, 19, 0.08);
+  box-shadow: $shadow-raised;
 }
 
 .popoverTitle {
@@ -220,7 +219,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: $radius-md;
   font-size: 14px;
 
   &.active {
@@ -265,7 +264,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   gap: 10px;
   padding: 6px 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: $radius-md;
   background: transparent;
   color: $text-normal;
   font: inherit;
@@ -299,9 +298,9 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 // ---- Proposal ---------------------------------------------------------------------------
 
 .proposal {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid $hairline;
+  padding: 14px 16px;
+  border-radius: $radius-lg;
+  border: none;
   background: $surface-soft;
   font-size: 14px;
   line-height: 1.55;
@@ -333,11 +332,11 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .add .changeMark {
-  color: #2f6b3a; // success, darkened to 5.9:1 on surface-soft; paired with the "+" mark
+  color: $sage-text; // success, darkened to 5.9:1 on surface-soft; paired with the "+" mark
 }
 
 .remove .changeMark {
-  color: #a33a3a;
+  color: $error-text;
 }
 
 .proposalActions {
@@ -360,7 +359,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   gap: 6px;
   height: 32px;
   padding: 0 14px;
-  border-radius: 8px;
+  border-radius: $radius-md;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -370,7 +369,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 .primary {
   border: none;
   background: $key-dark;
-  color: #141413;
+  color: #1f1d1a;
 
   &:active {
     background: $primary-active;
@@ -430,11 +429,11 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   border: none;
   background: none;
   padding: 4px 6px;
-  border-radius: 6px;
+  border-radius: $radius-sm;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
-  color: $coral-text;
+  color: $clay-text;
   cursor: pointer;
 
   &:hover {
@@ -448,7 +447,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .message.error {
-  color: #a33a3a; // error text, 6.1:1 on canvas
+  color: $error-text; // error text, 6.1:1 on canvas
 }
 
 .setup {
@@ -456,7 +455,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: $radius-md;
   background: $surface-soft;
   font-size: 13px;
   color: $body-text;

@@ -23,8 +23,8 @@
   display: flex;
   gap: 2px;
   margin: 8px 8px 6px 0;
-  padding: 2px;
-  border-radius: 10px;
+  padding: 3px;
+  border-radius: $radius-md;
   background: $surface-card;
   -webkit-app-region: no-drag;
 }
@@ -38,7 +38,7 @@
   justify-content: center;
   gap: 6px;
   border: none;
-  border-radius: 8px;
+  border-radius: $radius-sm;
   background: transparent;
   color: $text-muted;
   font: inherit;
@@ -53,7 +53,7 @@
   &.active {
     background: $base-light;
     color: $text-normal;
-    box-shadow: 0 1px 2px rgba(20, 20, 19, 0.08);
+    box-shadow: $shadow-soft;
   }
 }
 
@@ -85,12 +85,12 @@
   display: flex;
   flex-direction: column;
   background-color: $window-background;
-  border-top-left-radius: 12px;
+  border-top-left-radius: $radius-xl;
   border-top: $area-border;
   border-left: $area-border;
 
   &.dropTarget {
-    outline: 2px dashed $coral-text;
+    outline: 2px dashed $clay-text;
     outline-offset: -4px;
   }
 }
@@ -119,11 +119,11 @@
   border: none;
   background: none;
   padding: 4px 6px;
-  border-radius: 6px;
+  border-radius: $radius-sm;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
-  color: $coral-text;
+  color: $clay-text;
   cursor: pointer;
 
   &:hover {
@@ -157,13 +157,13 @@
     align-self: flex-end;
     max-width: 90%;
     padding: 6px 10px;
-    border-radius: 10px;
+    border-radius: $radius-md;
     background: $surface-card;
     color: $text-normal;
   }
 
   &.error {
-    color: #a33a3a; // error text, 6.1:1 on canvas
+    color: $error-text; // error text, 6.1:1 on canvas
   }
 }
 

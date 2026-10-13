@@ -26,7 +26,7 @@
   margin-top: 12px;
   padding: 16px 16px 0 0;
 
-  border-radius: 0 12px 0 12px;
+  border-radius: 0 $radius-lg 0 $radius-lg;
 
   background-color: light-dark(
     color.adjust($base-light, $lightness: -3%),
@@ -44,7 +44,7 @@
 
   margin-left: 12px;
   margin-right: 12px;
-  border-radius: 8px;
+  border-radius: $radius-md;
 
   &.active {
     background-color: $widget-normal;

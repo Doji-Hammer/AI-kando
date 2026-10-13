@@ -58,7 +58,7 @@
 
     margin-left: 12px;
     margin-right: 12px;
-    border-radius: 8px;
+    border-radius: $radius-md;
 
     &.activeChapter {
       background-color: $widget-normal;
@@ -76,7 +76,7 @@
 
   .slide {
     aspect-ratio: 5/4;
-    border-radius: 8px;
+    border-radius: $radius-md;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;

@@ -41,10 +41,10 @@
 
 .modal {
   background-color: $window-background;
-  border-radius: 16px;
+  border-radius: $radius-xl;
   border: 1px solid light-dark($hairline, transparent);
 
-  box-shadow: 0 1px 3px rgba(20, 20, 19, 0.08);
+  box-shadow: $shadow-raised;
 
   width: min(95vw, calc(300px + 50vw));
 

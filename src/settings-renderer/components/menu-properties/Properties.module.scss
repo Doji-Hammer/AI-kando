@@ -82,8 +82,8 @@
   gap: 8px;
   margin: 10px 8px 12px 8px;
   padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px dashed $coral-text;
+  border-radius: $radius-md;
+  border: 1px dashed $clay-text;
   background: $surface-soft;
   font-size: 13px;
   line-height: 1.5;
@@ -104,7 +104,7 @@
     appearance: none;
     height: 28px;
     padding: 0 12px;
-    border-radius: 8px;
+    border-radius: $radius-md;
     border: 1px solid $hairline;
     background: $base-light;
     color: $text-normal;
@@ -116,6 +116,6 @@
   .accept {
     border: none;
     background: $key-dark;
-    color: #141413;
+    color: #1f1d1a;
   }
 }

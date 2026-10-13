@@ -22,13 +22,13 @@
   margin-bottom: -8px;
 
   > *:first-child {
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
+    border-top-left-radius: $radius-xs;
+    border-bottom-left-radius: $radius-xs;
   }
 
   > *:last-child {
-    border-top-right-radius: 5px;
-    border-bottom-right-radius: 5px;
+    border-top-right-radius: $radius-xs;
+    border-bottom-right-radius: $radius-xs;
   }
 
   > * {
