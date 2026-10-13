@@ -13,10 +13,8 @@
 
 .sidebar {
   min-height: 0px; // This is important to make the scrollboxes work.
-  background-color: light-dark(
-    $surface-soft,
-    rgba(color.adjust($base-dark, $lightness: -5%), 0.9)
-  );
+  background-color: transparent;
+  gap: $panel-gap;
   width: 370px;
   min-width: 250px;
   display: flex;
@@ -33,7 +31,7 @@
 .resizer {
   width: 10px;
   cursor: ew-resize;
-  opacity: 0.1;
+  opacity: 0; // Godspeed: panels are separated by the gap; the handle shows on hover
   transition: opacity 0.2s;
   z-index: 10;
 

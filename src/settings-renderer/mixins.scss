@@ -24,19 +24,28 @@
   @include background-transition;
 
   color: $text-normal;
-  background-color: $widget-normal;
+  background-color: $field-bg;
 
-  border: none;
+  // Godspeed: a persistent hairline border; focus turns it coral with a soft ring.
+  border: 1px solid $field-border;
   border-radius: 8px;
   box-sizing: border-box;
 
   cursor: text;
 
-  padding: 5px 10px;
+  padding: 4px 10px;
   font-size: 1em;
 
   &:hover {
-    background-color: $widget-normal-hover;
+    background-color: $field-bg;
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    border-color: $key-dark;
+    background-color: light-dark($base-light, $field-bg);
+    box-shadow: $focus-ring;
   }
 }
 

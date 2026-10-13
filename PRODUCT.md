@@ -23,7 +23,7 @@ Success: a power user can describe a change in one sentence, see exactly what th
 
 ## Brand Personality
 
-Calm, editorial, precise. Quiet and confident, like Things 3 or iA Writer. The warm Warm Editorial look does the talking; the interface stays out of the way.
+Calm, editorial, precise. Quiet and confident, like Things 3 or iA Writer. The Godspeed — Warm Editorial look does the talking: cream panels floating on a warm wallpaper, a coral bar on the selected row, dark key chips, Cormorant titles. The interface stays out of the way.
 
 ## Anti-references
 

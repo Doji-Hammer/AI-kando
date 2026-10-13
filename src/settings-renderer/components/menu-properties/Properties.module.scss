@@ -13,11 +13,12 @@
 .container {
   position: relative;
   flex-grow: 1;
-  background-color: $window-background;
+  background: $panel;
+  border-radius: $panel-radius;
+  margin-top: 36px; // leaves room for the icon that sits on the panel's top edge
   display: flex;
   flex-direction: column;
   min-height: 0px; // This is important to make the scrollboxes work.
-  border-top: $area-border;
   padding: 8px;
 }
 
@@ -34,8 +35,8 @@
 
   flex-shrink: 0;
   margin: -30px auto 0 auto;
-  background-color: $window-background;
-  border-top: $area-border;
+  background-color: light-dark(#faf9f5, $base-dark);
+  box-shadow: 0 2px 6px rgba(20, 20, 19, 0.06);
   border-radius: 50%;
   overflow: hidden;
 
@@ -48,14 +49,20 @@
 
 .name {
   font-family: $font-serif;
-  font-size: 24px;
-  font-weight: 400;
+  font-size: 26px;
+  font-weight: 500; // Godspeed: Cormorant Garamond at 500
   letter-spacing: -0.3px;
   line-height: 1.2;
 
   input {
     font: inherit;
     letter-spacing: inherit;
+
+    // The title reads as a heading; it only shows a field when focused.
+    &:not(:focus) {
+      border-color: transparent;
+      background-color: transparent;
+    }
   }
   margin: 0 8px;
   padding: 0 8px;

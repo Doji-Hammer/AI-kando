@@ -115,24 +115,25 @@ input[type='number'] {
   }
 }
 
+// Godspeed scrollbars: a thin rounded thumb on a transparent track.
 *::-webkit-scrollbar-track {
-  background-color: rgba(128, 128, 128, 0.1);
-  border-radius: 3px;
-  margin: 10px 0;
+  background-color: transparent;
 }
 
 *::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
   cursor: pointer;
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: light-dark(#8e8b82, rgba(128, 128, 128, 0.5));
-  border-radius: 3px;
+  background-color: light-dark(rgba(20, 20, 19, 0.14), rgba(255, 255, 255, 0.2));
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(128, 128, 128, 0.9);
+  background-color: light-dark(rgba(20, 20, 19, 0.28), rgba(255, 255, 255, 0.35));
 }
 
 // Respect the macOS "Reduce motion" setting everywhere in the settings window.

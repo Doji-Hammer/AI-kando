@@ -130,6 +130,7 @@ export default function App() {
           sakuraLightFlavor: settingsWindowFlavor === 'sakura-light',
           sakuraDarkFlavor: settingsWindowFlavor === 'sakura-dark',
           sakuraSystemFlavor: settingsWindowFlavor === 'sakura-system',
+          autoFlavor: settingsWindowFlavor === 'auto',
         })}>
         <div
           className={cx({

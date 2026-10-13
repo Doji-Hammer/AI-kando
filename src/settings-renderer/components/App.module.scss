@@ -25,6 +25,11 @@
   background-position: center;
   background-blend-mode: overlay;
 
+  // Godspeed: the default window is a warm wallpaper; the areas float on it as panels.
+  &.autoFlavor {
+    background: light-dark($wallpaper, $base-dark);
+  }
+
   &.sakuraSystemFlavor .centerArea,
   &.transparentSystemFlavor .centerArea {
     color-scheme: light dark;
@@ -85,6 +90,8 @@
   min-height: 0px; // This is important to make the scrollboxes work.
   display: flex;
   flex-grow: 1;
+  gap: $panel-gap;
+  padding: $panel-gap;
 }
 
 .bannerBackground {
@@ -96,6 +103,8 @@
   width: 0;
   min-width: 400px;
   z-index: 1;
+  background: $panel;
+  border-radius: $panel-radius;
 
   display: flex;
   flex-direction: column;

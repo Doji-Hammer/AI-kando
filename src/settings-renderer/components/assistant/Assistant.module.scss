@@ -60,11 +60,13 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   gap: 8px;
   padding: 6px;
   border-radius: 12px;
-  border: 1px solid $hairline;
-  background: $base-light;
+  border: 1px solid $field-border;
+  background: $field-bg;
 
   &:focus-within {
-    border-color: $text-normal;
+    border-color: $key-dark;
+    background: $base-light;
+    box-shadow: $focus-ring;
   }
 
   // A menu item is dragged over the composer: dropping it adds an @ chip.
@@ -160,6 +162,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   .shortcut {
+    @include kbd-chip;
     margin-left: auto;
   }
 }
@@ -208,10 +211,8 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .groupName {
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: $text-muted;
+  @include section-label;
+  padding: 6px 8px 4px 8px;
 }
 
 .row {
@@ -224,7 +225,8 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   font-size: 14px;
 
   &.active {
-    background: $surface-card;
+    background: $selected-bg;
+    box-shadow: $selected-edge;
   }
 }
 
@@ -337,7 +339,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .remove .changeMark {
-  color: #a33a3a;
+  color: $error-text;
 }
 
 .proposalActions {
@@ -378,9 +380,8 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   kbd {
-    font: inherit;
-    font-size: 12px;
-    opacity: 0.75;
+    @include kbd-chip;
+    padding: 0 5px;
   }
 }
 
@@ -448,7 +449,7 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .message.error {
-  color: #a33a3a; // error text, 6.1:1 on canvas
+  color: $error-text; // error text, 6.1:1 on canvas
 }
 
 .setup {

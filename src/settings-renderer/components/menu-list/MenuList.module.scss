@@ -23,12 +23,8 @@
   display: flex;
   flex-direction: column;
   min-height: 0px; // This is important to make the scrollboxes work.
-  background-color: $window-background;
-  border-top-left-radius: 12px;
+  background-color: transparent;
   flex-grow: 1;
-  border-top: $area-border;
-  border-left: $area-border;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.075);
 
   > :first-child {
     flex-grow: 1;
@@ -41,11 +37,19 @@
   position: relative;
   display: block;
   line-height: normal;
-  padding: 10px;
-  margin-bottom: 8px;
+  padding: 10px 12px;
+  margin-bottom: 2px;
   text-align: left;
   width: 100%;
   overflow: hidden;
+
+  // Godspeed rows: flat, no card border; the selected row gets a cream fill and a coral bar.
+  border: none;
+  background-color: transparent;
+
+  &:not(.selected):not(:disabled):hover {
+    background-color: $row-hover;
+  }
 
   * {
     pointer-events: none;
@@ -53,6 +57,9 @@
 
   &.selected {
     padding-right: 100px;
+    border: none;
+    background-color: $selected-bg;
+    box-shadow: $selected-edge;
   }
 
   // A low opacity seems to be required. Setting it to zero hides also the dragged copy

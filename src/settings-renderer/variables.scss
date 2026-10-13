@@ -81,3 +81,49 @@ $font-serif: 'Cormorant Garamond', 'Tiempos Headline', Garamond, 'Times New Roma
 $font-mono: 'JetBrains Mono', ui-monospace, monospace;
 $coral-text: #9a4c33;
 $control-outline: #8e8b82;
+
+// Godspeed — Warm Editorial ---------------------------------------------------------------
+// The window is a warm wallpaper gradient; every area floats on it as a cream panel.
+$wallpaper: linear-gradient(
+  158deg,
+  #efe9de 0%,
+  #f3ede3 22%,
+  #f0e2d5 48%,
+  #e9d7c7 66%,
+  #faf9f5 100%
+);
+$panel: light-dark(rgba(250, 249, 245, 0.88), rgba($base-dark, 0.88));
+$panel-radius: 12px;
+$panel-gap: 8px;
+$selected-bg: light-dark(#e8e0d2, rgba(255, 255, 255, 0.08)); // surface-cream-strong
+$selected-edge: inset 3px 0 0 0 $key-dark; // the coral bar on the selected row
+$row-hover: light-dark(#f5f0e8, rgba(255, 255, 255, 0.05));
+$kbd-bg: #141413;
+$kbd-text: #faf9f5;
+$field-bg: light-dark(#f5f0e8, rgba(255, 255, 255, 0.06));
+$field-border: light-dark(#e6dfd8, rgba(255, 255, 255, 0.12));
+$focus-ring: 0 0 0 3px rgba(204, 120, 92, 0.15);
+$divider: #ebe6df;
+$error-text: #c64545; // 4.59:1 on canvas
+$icon-muted: #8e8b82;
+
+@mixin section-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: $text-muted;
+}
+
+@mixin kbd-chip {
+  display: inline-block;
+  background: $kbd-bg;
+  color: $kbd-text;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
