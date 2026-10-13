@@ -21,68 +21,24 @@
   flex-direction: column;
   color: $text-normal;
 
-  background-size: cover;
-  background-position: center;
-  background-blend-mode: overlay;
+  // Godspeed: every window flavor gets the warm wallpaper, and the areas float on it as
+  // cream panels. The flavor only picks the color scheme now; the old sakura images and
+  // see-through areas are gone, so the look is the same on every Mac.
+  background: $wallpaper; // light only (light-dark() cannot take a gradient)
 
-  // Godspeed: the default window is a warm wallpaper; the areas float on it as panels.
-  &.autoFlavor {
-    background: light-dark($wallpaper, $base-dark);
-  }
-
-  &.sakuraSystemFlavor .centerArea,
-  &.transparentSystemFlavor .centerArea {
+  &.sakuraSystemFlavor,
+  &.transparentSystemFlavor {
     color-scheme: light dark;
   }
 
-  &.sakuraDarkFlavor .centerArea,
-  &.transparentDarkFlavor .centerArea {
+  &.sakuraDarkFlavor,
+  &.transparentDarkFlavor {
     color-scheme: only dark;
   }
 
-  &.sakuraLightFlavor .centerArea,
-  &.transparentLightFlavor .centerArea {
+  &.sakuraLightFlavor,
+  &.transparentLightFlavor {
     color-scheme: only light;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    &.sakuraSystemFlavor {
-      background-image: url('../../../assets/images/settings-sakura-dark.webp');
-    }
-
-    &.sakuraSystemFlavor .centerArea,
-    &.transparentSystemFlavor .centerArea {
-      background-color: rgba($base-dark, 0.5);
-    }
-  }
-
-  @media (prefers-color-scheme: light) {
-    &.sakuraSystemFlavor {
-      background-image: url('../../../assets/images/settings-sakura-light.webp');
-    }
-
-    &.sakuraSystemFlavor .centerArea,
-    &.transparentSystemFlavor .centerArea {
-      background-color: rgba($base-light, 0.5);
-    }
-  }
-
-  &.sakuraLightFlavor {
-    background-image: url('../../../assets/images/settings-sakura-light.webp');
-  }
-
-  &.sakuraLightFlavor .centerArea,
-  &.transparentLightFlavor .centerArea {
-    background-color: rgba($base-light, 0.5);
-  }
-
-  &.sakuraDarkFlavor {
-    background-image: url('../../../assets/images/settings-sakura-dark.webp');
-  }
-
-  &.sakuraDarkFlavor .centerArea,
-  &.transparentDarkFlavor .centerArea {
-    background-color: rgba($base-dark, 0.5);
   }
 }
 

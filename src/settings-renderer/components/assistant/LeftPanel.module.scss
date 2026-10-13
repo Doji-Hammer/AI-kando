@@ -109,8 +109,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
-  font-size: 14px;
+  font-family: $font-serif;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.3px;
 }
 
 .clear {

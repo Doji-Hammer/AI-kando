@@ -79,11 +79,14 @@
 @mixin primary-button {
   @include normal-button;
 
-  color: light-dark(#141413, $text-normal); // ink on coral: 5.63:1
+  color: #ffffff; // Godspeed: white on coral
   background-color: light-dark($key-dark, $key-dark);
 
   &:not(.selected):not(:disabled):hover {
-    background-color: light-dark($key-dark, color.adjust($key-dark, $lightness: 10%));
+    background-color: light-dark(
+      $primary-active,
+      color.adjust($key-dark, $lightness: 10%)
+    );
   }
 
   &:not(.selected):not(:disabled):active {

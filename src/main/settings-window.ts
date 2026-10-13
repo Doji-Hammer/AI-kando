@@ -96,7 +96,11 @@ export class SettingsWindow extends BrowserWindow {
       x: restoredBounds?.x,
       y: restoredBounds?.y,
       width: restoredBounds?.width ?? 1350,
-      height: restoredBounds?.height ?? 900,
+      // Taller than before so the item bar and the assistant composer fit under the
+      // preview. Capped to the screen's work area on small displays.
+      height:
+        restoredBounds?.height ??
+        Math.min(1060, screen.getPrimaryDisplay().workAreaSize.height),
       minWidth: 1000,
       minHeight: 700,
       show: false,

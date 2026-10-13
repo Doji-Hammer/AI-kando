@@ -27,7 +27,7 @@ import {
 } from './dialogs';
 import { CollectionList } from './menu-list';
 import LeftPanel from './assistant/LeftPanel';
-import { MenuPreview, PreviewHeader } from './menu-preview';
+import { MenuPreview, PreviewHeader, PreviewFooter } from './menu-preview';
 import Assistant from './assistant/Assistant';
 import { Properties } from './menu-properties';
 import { Note, Sidebar } from './common';
@@ -130,7 +130,6 @@ export default function App() {
           sakuraLightFlavor: settingsWindowFlavor === 'sakura-light',
           sakuraDarkFlavor: settingsWindowFlavor === 'sakura-dark',
           sakuraSystemFlavor: settingsWindowFlavor === 'sakura-system',
-          autoFlavor: settingsWindowFlavor === 'auto',
         })}>
         <div
           className={cx({
@@ -150,6 +149,7 @@ export default function App() {
             })}>
             <PreviewHeader />
             <MenuPreview />
+            <PreviewFooter />
             <Assistant />
           </div>
           <Sidebar

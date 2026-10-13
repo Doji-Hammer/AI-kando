@@ -135,13 +135,15 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   border: none;
   border-radius: 9999px;
   background: $key-dark;
-  color: #141413; // ink on coral: 5.63:1
+  color: #ffffff; // Godspeed: white on coral
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   cursor: pointer;
+  transition: background-color 0.15s ease;
 
+  &:hover,
   &:active {
     background: $primary-active;
     color: #ffffff;
@@ -360,23 +362,30 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  padding: 0 14px;
+  height: 40px; // Godspeed buttons: 40px, 20px sides, 14px medium
+  padding: 0 20px;
   border-radius: 8px;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
+
+  &:active {
+    transform: translateY(1px);
+  }
 }
 
 .primary {
   border: none;
   background: $key-dark;
-  color: #141413;
+  color: #ffffff;
 
+  &:hover,
   &:active {
     background: $primary-active;
-    color: #ffffff;
   }
 
   kbd {
@@ -389,6 +398,10 @@ $ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   border: 1px solid $hairline;
   background: $base-light;
   color: $text-normal;
+
+  &:hover {
+    background: $surface-soft;
+  }
 }
 
 // Collapsed: the last reply as one line that opens the conversation.

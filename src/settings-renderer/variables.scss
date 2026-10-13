@@ -18,13 +18,10 @@ $key-warning: #e99031;
 
 $text-normal: light-dark(#141413, #eee); // ink
 $text-always-light: light-dark(#faf9f5, #fff); // on-dark
-$text-muted: light-dark(#615f59, #aaa); // muted, darkened for 4.5:1 on cards
-$text-link: light-dark(#9a4c33, $key-light); // coral text: 4.6:1+ on every cream surface
+$text-muted: light-dark(#6c6a64, #aaa); // Godspeed muted
+$text-link: light-dark(#cc785c, $key-light); // Godspeed links: coral
 $text-warning: $key-warning;
-$text-link-hover: light-dark(
-  color.adjust($key-dark, $lightness: 10%),
-  color.adjust($key-light, $lightness: 10%)
-);
+$text-link-hover: light-dark(#a9583e, color.adjust($key-light, $lightness: 10%));
 $text-warning-hover: color.adjust($key-warning, $lightness: 10%);
 
 $window-background: light-dark($base-light, $base-dark);
@@ -79,7 +76,7 @@ $font-sans:
   sans-serif;
 $font-serif: 'Cormorant Garamond', 'Tiempos Headline', Garamond, 'Times New Roman', serif;
 $font-mono: 'JetBrains Mono', ui-monospace, monospace;
-$coral-text: #9a4c33;
+$coral-text: #cc785c; // Godspeed coral, as used for links
 $control-outline: #8e8b82;
 
 // Godspeed — Warm Editorial ---------------------------------------------------------------
