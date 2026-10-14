@@ -213,7 +213,15 @@ function ReferencePicker(props: {
   readonly onPick: (row: PickerRow) => void;
 }) {
   const query = useAssistant((s) => s.pickerQuery);
+  const activeRow = React.useRef<HTMLDivElement>(null);
   let n = -1;
+
+  // Keep the highlighted row visible when arrowing past the popover's scroll area. Keyed
+  // on the row keys, not the groups array, so unrelated re-renders don't undo a manual scroll.
+  const rowKeys = props.groups.flatMap((g) => g.rows.map((r) => r.key)).join('\n');
+  React.useEffect(() => {
+    activeRow.current?.scrollIntoView({ block: 'nearest' });
+  }, [props.activeIndex, rowKeys]);
 
   return (
     <div
@@ -235,6 +243,7 @@ function ReferencePicker(props: {
             return (
               <div
                 key={row.key}
+                ref={isActive ? activeRow : undefined}
                 aria-selected={isActive}
                 className={cx({ row: true, active: isActive })}
                 role="option"
