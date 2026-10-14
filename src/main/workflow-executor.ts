@@ -28,6 +28,11 @@ import { execute as sendWebSocketMessage } from './actions/send-websocket-messag
 import { execute as simulateHotkey } from './actions/simulate-hotkey';
 import { execute as delay } from './actions/delay';
 
+export type WorkflowActionOverride = () => Promise<void>;
+export type WorkflowActionOverrides = Map<
+  DeepReadonly<WorkflowAction> | WorkflowAction,
+  WorkflowActionOverride
+>;
 type WorkflowActionExecutor<T extends WorkflowActionType> = (
   action: DeepReadonly<Extract<WorkflowAction, { type: T }>>,
   app: KandoApp
@@ -84,19 +89,42 @@ export class WorkflowExecutor {
    *
    * @param workflow The select-workflow to execute.
    * @param app The app which executed the action.
+   * @param overrides Optional map from an action object to an async callback replacing
+   *   that specific action.
+   * @param shouldContinue Optional predicate checked before each action. If it returns
+   *   false, remaining actions are skipped while existing finalizers still run.
    */
-  public async executeWorkflow(workflow: DeepReadonly<Workflow>, app: KandoApp) {
+  public async executeWorkflow(
+    workflow: DeepReadonly<Workflow>,
+    app: KandoApp,
+    overrides?: WorkflowActionOverrides,
+    shouldContinue?: () => boolean
+  ) {
     if (!workflow.actions || workflow.actions.length === 0) {
       return;
     }
-
     const finalizeCalls: (() => Promise<void>)[] = [];
 
     try {
       for (const action of workflow.actions) {
-        const finalizeCall = await this.executeAction(action, app);
-        if (finalizeCall) {
-          finalizeCalls.push(finalizeCall);
+        if (shouldContinue && !shouldContinue()) {
+          break;
+        }
+        const override = overrides?.get(action);
+        if (override) {
+          try {
+            await override();
+          } catch (error) {
+            console.error(
+              'Failed to execute workflow action override:',
+              error instanceof Error ? error.message : error
+            );
+          }
+        } else {
+          const finalizeCall = await this.executeAction(action, app);
+          if (finalizeCall) {
+            finalizeCalls.push(finalizeCall);
+          }
         }
       }
     } catch (error) {

@@ -21,6 +21,7 @@ import {
   ActionTypeRegistry,
 } from '../../../common';
 import { mapKeys } from '../../../common/key-codes';
+import { AppState, AppOp } from '../../../common/app-switcher';
 
 export class MacosBackend extends Backend {
   /**
@@ -48,6 +49,7 @@ export class MacosBackend extends Backend {
       supportsFocusingWindows: true,
       supportsShortcuts: true,
       shouldUseTransparentSettingsWindow: true,
+      supportsAppControl: true,
     };
   }
 
@@ -121,6 +123,38 @@ export class MacosBackend extends Backend {
   /** Focuses the given window via the native addon. */
   public override async focusWindow(window: WindowDescription): Promise<void> {
     native.focusWindow(window.windowName, window.appName);
+  }
+  /** Returns the running state and window information for the given application targets. */
+  public override getAppStates(targets: string[]): AppState[] {
+    try {
+      return native.getAppStates(targets);
+    } catch (e) {
+      console.error(
+        'Failed to get app states: ' + (e instanceof Error ? e.message : String(e))
+      );
+      return targets.map((): AppState => ({
+        running: false,
+        windows: [],
+        windowsKnown: false,
+      }));
+    }
+  }
+
+  /** Controls an application or one of its windows. */
+  public override controlApp(
+    target: string,
+    op: AppOp,
+    windowId?: number,
+    pid?: number
+  ): void {
+    try {
+      native.controlApp(target, op, windowId, pid);
+    } catch (e) {
+      console.error(
+        `Failed to control app (${target}, ${op}): ` +
+          (e instanceof Error ? e.message : String(e))
+      );
+    }
   }
 
   /**

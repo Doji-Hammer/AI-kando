@@ -49,6 +49,10 @@ export const SHOW_MENU_MESSAGE = z.object({
 /**
  * Sent by the client to request that a menu be shown. The menu structure is provided as a
  * MENU_ITEM_SCHEMA object.
+ *
+ * If the connection is already registered as an observer, the server retires that
+ * existing registration before establishing the one-time observer for this custom menu
+ * session.
  */
 export const SHOW_CUSTOM_MENU_MESSAGE = z.object({
   type: z.literal('show-custom-menu'),
@@ -70,8 +74,18 @@ export const STOP_OBSERVING_MESSAGE = z.object({
 });
 
 /**
- * Sent by the client to notify the server that a menu item was selected. The path is an
- * array of indices representing the path to the selected item in the menu tree.
+ * Sent by the client to notify the server that a menu item was selected, or sent by the
+ * server to observers when an interaction occurs. The path is an array of indices
+ * representing the path to the item in the menu tree.
+ *
+ * For application-launcher items on macOS (app switcher, V3.5):
+ *
+ * - Interaction paths reported externally always refer to the source (stored) menu tree.
+ * - A selection on a synthetic window child (from a multi-window app) is reported as
+ *   `selectButton` on the originating source app button path (e.g. `[2]`).
+ * - Synthetic submenu interactions (hover, open, activate) on converted parents or
+ *   synthetic window children are suppressed and not forwarded to external observers.
+ * - `closeMenu` and interactions on non-converted items are forwarded unchanged.
  */
 export const MENU_INTERACTION_MESSAGE = z.object({
   type: z.literal('menu-interaction'),

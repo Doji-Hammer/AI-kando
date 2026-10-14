@@ -95,6 +95,34 @@ body {
       }
     }
 
+    // Running application dot indicator.
+    .running-dot {
+      position: absolute;
+      bottom: 3px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: var(--running-dot-size, 6px);
+      height: var(--running-dot-size, 6px);
+      border-radius: 50%;
+      background-color: var(--running-dot-color, #ffffff);
+      box-shadow: 0 0 0 1px var(--running-dot-ring-color, rgba(0, 0, 0, 0.75));
+      pointer-events: none;
+      z-index: 20;
+      transition: opacity var(--opacity-transition, 250ms ease);
+    }
+
+    // Scale down the running dot on tiny grandchild items.
+    &.grandchild .running-dot {
+      width: var(--running-dot-grandchild-size, 3px);
+      height: var(--running-dot-grandchild-size, 3px);
+      bottom: 2px;
+      box-shadow: 0 0 0 0.5px var(--running-dot-ring-color, rgba(0, 0, 0, 0.75));
+    }
+
+    // Fade the center item's dot if center content is hidden when hovering a child.
+    &.active:has(> .hovered) > .icon-layer > .running-dot {
+      opacity: 0;
+    }
     // Hide deeper levels than grandchildren.
     &.grandchild > .menu-node {
       display: none;

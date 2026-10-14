@@ -405,6 +405,10 @@
   height: 0;
 }
 
+.menu-node.active > .icon-layer > .running-dot {
+  display: none;
+}
+
 .menu-node.child > .icon-layer {
   inset: calc(-1 * var(--child-size) / 2);
   width: var(--child-size);

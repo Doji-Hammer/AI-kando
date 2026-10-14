@@ -11,7 +11,7 @@
 import { GeneralSettings, MenuItem, MenuThemeDescription } from '../common';
 import { IconThemeRegistry } from '../common/icon-themes/icon-theme-registry';
 import { getClosestEquivalentAngle } from '../common/math';
-import { RenderedMenuItem } from './rendered-menu-item';
+import { DisplayedMenuItem, RenderedMenuItem } from './rendered-menu-item';
 
 /**
  * Menu themes in Kando are responsible for rendering the menu items. A theme consists of
@@ -178,7 +178,7 @@ export class MenuTheme {
    * @returns The created html element.
    */
   public createItem(
-    item: MenuItem,
+    item: DisplayedMenuItem,
     settings: GeneralSettings,
     quickSelectKeySymbol: string
   ): HTMLElement {
@@ -212,6 +212,12 @@ export class MenuTheme {
           item.icon
         );
         layerDiv.appendChild(icon);
+
+        if (item.app?.running) {
+          const dot = document.createElement('div');
+          dot.classList.add('running-dot');
+          layerDiv.appendChild(dot);
+        }
       } else if (layer.content === 'quick-select-key') {
         // Only create the quickSelectKey div, if the setting is enabled, and
         // the item is a button or submenu as those are the ones that have open-select workflows.

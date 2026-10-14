@@ -20,6 +20,8 @@ import {
   MenuInteractionType,
   TypedEventEmitter,
 } from '../common';
+import { Modifiers, NO_MODIFIERS } from '../common/app-switcher';
+import { EnterGestureTracker } from '../common/app-switcher-logic';
 import {
   RenderedChildMenuItem,
   RenderedRootMenuItem,
@@ -59,6 +61,7 @@ type MenuEvents = {
     path: number[],
     selectionTime: number,
     inputSource: SelectionSource,
+    modifiers: Modifiers,
   ];
   // Fired when the pointer should be moved by the given offset. This is used to warp the
   // pointer to the center of the menu when it is shown.
@@ -72,6 +75,9 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
    * is shown and destroyed when the menu is hidden.
    */
   private root: RenderedRootMenuItem = null;
+
+  /** Tracks the lifecycle and modifier state of Enter key gestures. */
+  private enterGestureTracker = new EnterGestureTracker();
 
   /**
    * This holds some information which is passed to the menu when it is shown from the
@@ -173,6 +179,7 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
     }
 
     this.clear();
+    this.enterGestureTracker.startSession();
 
     this.emitMenuInteractionEvent(MenuInteractionType.eOpenMenu);
 
@@ -275,6 +282,8 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
 
   /** Removes all DOM elements from the menu and resets the root menu item. */
   public clear() {
+    this.enterGestureTracker.reset();
+    this.pointerInput.cancelGesture();
     this.container.className = 'hidden';
     this.container.innerHTML = '';
     this.root = null;
@@ -386,7 +395,12 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
       }
     };
 
-    const onSelection = (coords: Vec2, type: SelectionType, source: SelectionSource) => {
+    const onSelection = (
+      coords: Vec2,
+      type: SelectionType,
+      source: SelectionSource,
+      modifiers: Modifiers = NO_MODIFIERS
+    ) => {
       // Ignore all input if the menu is in the process of hiding.
       if (this.container.classList.contains('hidden')) {
         return;
@@ -440,7 +454,7 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
         }
 
         if (interaction === MenuInteractionType.eSelectButton) {
-          this.emitSelectionEvent(item, source);
+          this.emitSelectionEvent(item, source, modifiers);
         } else {
           this.emitItemInteractionEvent(interaction, path);
         }
@@ -466,6 +480,53 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
 
       if (event.key === 'Escape') {
         return;
+      }
+
+      if (event.key === 'Enter') {
+        if (event.type === 'keydown') {
+          this.enterGestureTracker.onKeyDown(
+            {
+              ctrl: event.ctrlKey,
+              meta: event.metaKey,
+              alt: event.altKey,
+              shift: event.shiftKey,
+            },
+            event.repeat
+          );
+          this.latestInput.button = ButtonState.eClicked;
+          this.redraw();
+        } else {
+          const modifiers = this.enterGestureTracker.onKeyUp();
+          if (modifiers && this.hoveredItem) {
+            if (this.hoveredItem === this.centerItem) {
+              this.emitItemInteractionEvent(
+                MenuInteractionType.eActivateMenu,
+                this.hoveredItem.renderData.path
+              );
+            } else if (this.hoveredItem === this.centerItem.renderData.parent) {
+              this.selectParent();
+            } else if (this.hoveredItem.type === 'submenu') {
+              this.emitItemInteractionEvent(
+                MenuInteractionType.eOpenSubmenu,
+                this.hoveredItem.renderData.path
+              );
+              this.openSubmenu(this.hoveredItem);
+            } else {
+              this.emitSelectionEvent(
+                this.hoveredItem,
+                SelectionSource.eKeyboard,
+                modifiers
+              );
+            }
+
+            this.latestInput.button = ButtonState.eReleased;
+            this.redraw();
+          } else if (this.latestInput?.button === ButtonState.eClicked) {
+            this.latestInput.button = ButtonState.eReleased;
+            this.redraw();
+          }
+          return;
+        }
       }
 
       const anyModifierPressed =
@@ -524,7 +585,7 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
                   );
                   this.openSubmenu(child, this.getCenterItemPosition());
                 } else {
-                  this.emitSelectionEvent(child, SelectionSource.eKeyboard);
+                  this.emitSelectionEvent(child, SelectionSource.eKeyboard, NO_MODIFIERS);
                 }
 
                 this.latestInput.button = ButtonState.eReleased;
@@ -560,36 +621,6 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
             return;
           }
         }
-
-        if (event.key === 'Enter') {
-          if (event.type === 'keydown') {
-            this.latestInput.button = ButtonState.eClicked;
-            this.redraw();
-          } else {
-            if (this.hoveredItem) {
-              if (this.hoveredItem === this.centerItem) {
-                this.emitItemInteractionEvent(
-                  MenuInteractionType.eActivateMenu,
-                  this.hoveredItem.renderData.path
-                );
-              } else if (this.hoveredItem === this.centerItem.renderData.parent) {
-                this.selectParent();
-              } else if (this.hoveredItem.type === 'submenu') {
-                this.emitItemInteractionEvent(
-                  MenuInteractionType.eOpenSubmenu,
-                  this.hoveredItem.renderData.path
-                );
-                this.openSubmenu(this.hoveredItem);
-              } else {
-                this.emitSelectionEvent(this.hoveredItem, SelectionSource.eKeyboard);
-              }
-
-              this.latestInput.button = ButtonState.eReleased;
-              this.redraw();
-            }
-            return;
-          }
-        }
       }
 
       if (event.type === 'keydown') {
@@ -611,7 +642,28 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
     document.addEventListener('keydown', onKeyEvent);
     document.addEventListener('keyup', onKeyEvent);
 
+    // Off by default. Set `localStorage['kando-debug-pointer']` to record the
+    // Control-click / right-click / trackpad-secondary-click event sequences (type,
+    // button, buttons, ctrlKey and their order) of the pending live check on macOS
+    // Electron 43.7. That captured sequence decides whether a Control+left-click ever
+    // arrives as button === 2, which today would take the ordinary right-click
+    // back/cancel branch in PointerInput.onPointerDownEvent.
+    const debugLogPointerEvent = (event: MouseEvent | PointerEvent) => {
+      if (window.localStorage.getItem('kando-debug-pointer')) {
+        console.log('[kando-debug-pointer]', {
+          type: event.type,
+          button: event.button,
+          buttons: event.buttons,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          altKey: event.altKey,
+          shiftKey: event.shiftKey,
+        });
+      }
+    };
+
     this.container.addEventListener('pointerdown', (e) => {
+      debugLogPointerEvent(e);
       this.pointerInput.onPointerDownEvent(e);
     });
     this.container.addEventListener('pointermove', (e) => {
@@ -621,12 +673,28 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
       this.pointerInput.onMotionEvent(e);
     });
     this.container.addEventListener('pointerup', (e) => {
+      debugLogPointerEvent(e);
       this.pointerInput.onPointerUpEvent(e);
+    });
+    this.container.addEventListener('pointercancel', () => {
+      this.pointerInput.cancelGesture();
+    });
+    window.addEventListener('blur', () => {
+      this.pointerInput.cancelGesture();
+    });
+    this.container.addEventListener('contextmenu', (e) => {
+      debugLogPointerEvent(e);
+      if (cIsMac && e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     });
   }
 
   /** Hides the menu. */
   private hide() {
+    this.enterGestureTracker.reset();
+    this.pointerInput.cancelGesture();
     if (!this.hideTimeout) {
       this.container.classList.add('hidden');
 
@@ -1561,7 +1629,7 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
   private emitMenuInteractionEvent(
     type: MenuInteractionType.eOpenMenu | MenuInteractionType.eCloseMenu
   ) {
-    this.emit('interaction', type, [], 0, SelectionSource.eUnknown);
+    this.emit('interaction', type, [], 0, SelectionSource.eUnknown, NO_MODIFIERS);
   }
 
   /**
@@ -1581,7 +1649,7 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
       | MenuInteractionType.eActivateMenu,
     path: number[]
   ) {
-    this.emit('interaction', type, path, 0, SelectionSource.eUnknown);
+    this.emit('interaction', type, path, 0, SelectionSource.eUnknown, NO_MODIFIERS);
   }
 
   /**
@@ -1589,13 +1657,18 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
    *
    * @param type The type of interaction.
    */
-  private emitSelectionEvent(item: RenderedMenuItem, source: SelectionSource) {
+  private emitSelectionEvent(
+    item: RenderedMenuItem,
+    source: SelectionSource,
+    modifiers: Modifiers = NO_MODIFIERS
+  ) {
     this.emit(
       'interaction',
       MenuInteractionType.eSelectButton,
       item.renderData.path,
       Date.now() - this.menuShownTime,
-      source
+      source,
+      modifiers
     );
   }
 }

@@ -23,10 +23,31 @@ import {
   RootMenuItem,
   Vec2,
 } from '../common';
-import { IPCCallback } from '../common/ipc';
+import type { GenerationCallback } from '../common/ipc/ipc-observer-registry';
 import * as math from '../common/math';
-import { WorkflowExecutor } from './workflow-executor';
+import { WorkflowExecutor, WorkflowActionOverrides } from './workflow-executor';
 import { KandoApp } from './app';
+import {
+  Modifiers,
+  NO_MODIFIERS,
+  DisplayedMenuItem,
+  DisplayedRootMenuItem,
+  AppOp,
+} from '../common/app-switcher';
+import {
+  translateIpcInteraction,
+  decideAppSelection,
+  isStaleInteraction,
+  MenuHideCoordinator,
+  createAppOpOverride,
+  createCloseMenuOverride,
+  normalizeMenuGeneration,
+} from '../common/app-switcher-logic';
+import {
+  resolveAppState,
+  ResolvedMenuTree,
+  AppControlBackend,
+} from './app-state-resolver';
 
 declare const MENU_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 declare const MENU_WINDOW_WEBPACK_ENTRY: string;
@@ -64,8 +85,25 @@ export class MenuWindow extends BrowserWindow {
    */
   private menuIndex = 0;
 
-  /** This is true if the window is currently visible. */
-  private visible = false;
+  /**
+   * Owns the visibility lifecycle: the displayed-menu generation, the fade-out which ends
+   * in the platform hide, and the coalesced close request.
+   */
+  private hideCoordinator = new MenuHideCoordinator({
+    hidePlatformWindow: () => this.hidePlatformWindow(),
+    requestClose: (generation) =>
+      this.webContents.send(
+        'menu-window.trigger-interaction',
+        MenuInteractionType.eCloseMenu,
+        generation
+      ),
+  });
+
+  /** The currently resolved tree and path mapping. */
+  private currentResolvedTree?: ResolvedMenuTree;
+
+  /** The last displayed root sent to the renderer. */
+  private lastDisplayedRoot?: DisplayedRootMenuItem;
 
   /**
    * This is set to a value > 0 if we have currently inhibited the shortcut of the active
@@ -80,24 +118,12 @@ export class MenuWindow extends BrowserWindow {
     });
   });
 
-  /** This timeout is used to hide the window after the fade-out animation. */
-  private hideTimeout: NodeJS.Timeout = null;
-
   /** The pointer position where the currently shown menu was opened. */
   private menuOpeningPointerPosition?: Vec2;
 
-  /** Resolves once a closeMenu request has been finalized and the window is hidden. */
-  private pendingCloseMenuPromise?: Promise<void>;
-
-  /** Stores the resolver for pendingCloseMenuPromise while a close is in progress. */
-  private resolvePendingCloseMenu?: () => void;
-
-  /** Stores the rejecter for pendingCloseMenuPromise while a close is in progress. */
-  private rejectPendingCloseMenu?: (error: unknown) => void;
-
   constructor(
     private kando: KandoApp,
-    private ipcCallback: IPCCallback
+    private ipcCallback: GenerationCallback
   ) {
     const display = screen.getPrimaryDisplay();
 
@@ -192,16 +218,20 @@ export class MenuWindow extends BrowserWindow {
    * @param info Information about current desktop environment.
    * @param systemIconsChanged True if the system icon theme has changed since the last
    *   time the menu was shown.
+   * @param onGeneration Called with the generation of the menu this request shows, as
+   *   soon as it is allocated. It is not called if the request is dropped or superseded
+   *   before that.
    */
   public async showMenu(
     request: ShowMenuRequest,
     info: WMInfo,
-    systemIconsChanged: boolean
+    systemIconsChanged: boolean,
+    onGeneration?: (generation: number) => void
   ) {
+    const requestToken = this.hideCoordinator.allocateRequestToken();
     const sameShortcutBehavior = this.kando
       .getGeneralSettings()
       .get('sameShortcutBehavior');
-
     // If a menu is currently shown and the user presses the same shortcut again we will
     // either close the menu or show the next one with the same shortcut.
     if (this.isVisible()) {
@@ -231,6 +261,9 @@ export class MenuWindow extends BrowserWindow {
         // again. This is useful if the menu is currently open on another monitor.
         if (sameShortcutBehavior === 're-open') {
           await this.closeMenu();
+          if (!this.hideCoordinator.isRequestCurrent(requestToken)) {
+            return;
+          }
         }
 
         // If the 'sameShortcutBehavior' is set to 'cycle', we will show the next menu which
@@ -248,14 +281,28 @@ export class MenuWindow extends BrowserWindow {
       this.menuIndex = 0;
     }
 
+    if (!this.hideCoordinator.isRequestCurrent(requestToken)) {
+      return;
+    }
+
     // Select correct menu before showing it to user.
     const menu = this.chooseMenu(request, info);
-
     // If no menu was found, we can stop here.
     if (!menu) {
       console.log('No menu was found for the current conditions: ', info);
       return;
     }
+
+    const generation = this.hideCoordinator.startGeneration(requestToken);
+    if (generation === null) {
+      return;
+    }
+    onGeneration?.(generation);
+    const resolved = resolveAppState(
+      menu.root,
+      this.kando.getBackend() as unknown as AppControlBackend,
+      generation
+    );
 
     // We temporarily inhibit the shortcut of the menu (if any) so that key-repeat events
     // can be received by the renderer. These are necessary for the turbo-mode to work for
@@ -271,14 +318,28 @@ export class MenuWindow extends BrowserWindow {
       if (shortcut && shortcut.length > 0) {
         if (this.shortcutInhibitionID > 0) {
           await this.kando.getBackend().releaseInhibition(this.shortcutInhibitionID);
+          if (this.hideCoordinator.displayedGeneration !== generation) {
+            return;
+          }
         }
 
-        this.shortcutInhibitionID = await this.kando
-          .getBackend()
-          .inhibitShortcut(shortcut);
+        const newInhibitionID = await this.kando.getBackend().inhibitShortcut(shortcut);
+
+        if (this.hideCoordinator.displayedGeneration !== generation) {
+          await this.kando.getBackend().releaseInhibition(newInhibitionID);
+          return;
+        }
+
+        this.shortcutInhibitionID = newInhibitionID;
       }
     }
 
+    if (this.hideCoordinator.displayedGeneration !== generation) {
+      return;
+    }
+
+    this.currentResolvedTree = resolved;
+    this.lastDisplayedRoot = resolved.displayedRoot;
     // Store the last menu to be able to execute the selected action later. The WMInfo
     // will be passed to the action as well.
     this.lastMenu = menu;
@@ -336,18 +397,18 @@ export class MenuWindow extends BrowserWindow {
     // It will be used as an example in the condition picker of the settings.
     this.webContents.send(
       'menu-window.show-menu',
-      this.lastMenu.root,
+      resolved.displayedRoot,
       {
         mousePosition,
         windowSize,
         zoomFactor: this.webContents.getZoomFactor(),
-        useFixedPosition: this.lastMenu.useFixedPosition,
+        useFixedPosition: menu.useFixedPosition,
         fixedMenuPosition: {
-          x: this.lastMenu.fixedMenuPosition.x,
-          y: this.lastMenu.fixedMenuPosition.y,
+          x: menu.fixedMenuPosition.x,
+          y: menu.fixedMenuPosition.y,
         },
-        anchoredMode: this.lastMenu.anchored,
-        hoverMode: this.lastMenu.hoverMode,
+        anchoredMode: menu.anchored,
+        hoverMode: menu.hoverMode,
         systemIconsChanged,
       },
       {
@@ -357,17 +418,15 @@ export class MenuWindow extends BrowserWindow {
           x: info.workArea.x,
           y: info.workArea.y,
         },
-      }
+      },
+      generation
     );
   }
 
   /** This shows the window. */
   public override show() {
-    // Cancel any ongoing window-hiding.
-    if (this.hideTimeout) {
-      clearTimeout(this.hideTimeout);
-      this.hideTimeout = null;
-    }
+    this.hideCoordinator.show();
+
     // On Windows, we have to remove the ignore-mouse-events property when un-minimizing
     // the window. See the hide() method for more information on this workaround.
     if (process.platform === 'win32') {
@@ -392,8 +451,6 @@ export class MenuWindow extends BrowserWindow {
     setTimeout(() => {
       this.focus();
     }, 100);
-
-    this.visible = true;
   }
 
   /**
@@ -415,60 +472,19 @@ export class MenuWindow extends BrowserWindow {
    * actually hiding the window.
    */
   public async closeMenu() {
-    if (!this.isVisible()) {
-      return;
-    }
-
-    // If a close request is already in flight, return the existing promise.
-    if (this.pendingCloseMenuPromise) {
-      return this.pendingCloseMenuPromise;
-    }
-
-    this.pendingCloseMenuPromise = new Promise<void>((resolve, reject) => {
-      this.resolvePendingCloseMenu = () => {
-        this.resolvePendingCloseMenu = undefined;
-        this.rejectPendingCloseMenu = undefined;
-        this.pendingCloseMenuPromise = undefined;
-        resolve();
-      };
-
-      this.rejectPendingCloseMenu = (error: unknown) => {
-        this.resolvePendingCloseMenu = undefined;
-        this.rejectPendingCloseMenu = undefined;
-        this.pendingCloseMenuPromise = undefined;
-        reject(error);
-      };
-    });
-
-    this.webContents.send(
-      'menu-window.trigger-interaction',
-      MenuInteractionType.eCloseMenu
-    );
-
-    return this.pendingCloseMenuPromise;
-  }
-
-  /** Resolves a pending closeMenu promise if there is one. */
-  private settlePendingCloseMenu() {
-    if (this.resolvePendingCloseMenu) {
-      this.resolvePendingCloseMenu();
-    }
-  }
-
-  /** Rejects a pending closeMenu promise if there is one. */
-  private failPendingCloseMenu(error: unknown) {
-    if (this.rejectPendingCloseMenu) {
-      this.rejectPendingCloseMenu(error);
-    }
+    return this.hideCoordinator.close();
   }
 
   /**
    * If the fade-out animation is currently running, this already returns false.
    *
+   * Electron's BrowserWindow constructor may call this before the class fields (and thus
+   * the hide coordinator) exist, in which case the window is not visible.
+   *
    * @returns Returns true if the menu window is currently visible and not fading out.
    */
   public override isVisible() {
-    return this.visible;
+    return this.hideCoordinator?.isVisible ?? false;
   }
 
   /**
@@ -488,37 +504,40 @@ export class MenuWindow extends BrowserWindow {
    * See also: https://stackoverflow.com/questions/50642126/previous-window-focus-electron
    */
   public async hideWindow() {
-    this.visible = false;
-
-    if (this.hideTimeout) {
-      clearTimeout(this.hideTimeout);
-    }
+    const record = this.hideCoordinator.markHiding();
 
     // If we inhibited the menu's shortcut, we restore it now.
     if (this.shortcutInhibitionID > 0) {
-      await this.kando.getBackend().releaseInhibition(this.shortcutInhibitionID);
+      const inhibitionIDToRelease = this.shortcutInhibitionID;
       this.shortcutInhibitionID = 0;
+
+      try {
+        await this.kando.getBackend().releaseInhibition(inhibitionIDToRelease);
+      } catch (error) {
+        this.hideCoordinator.cancelPendingHide(record);
+        throw error;
+      }
     }
 
-    return new Promise<void>((resolve) => {
-      this.hideTimeout = setTimeout(() => {
-        if (process.platform === 'win32') {
-          this.setIgnoreMouseEvents(true);
-          this.minimize();
-        } else if (process.platform === 'darwin') {
-          super.hide();
-          if (!this.kando.isSettingsDialogVisible()) {
-            app.hide();
-          }
-        } else {
-          super.hide();
-        }
+    return this.hideCoordinator.hide(
+      this.kando.getGeneralSettings().get().fadeOutDuration,
+      record
+    );
+  }
 
-        this.hideTimeout = null;
-
-        resolve();
-      }, this.kando.getGeneralSettings().get().fadeOutDuration);
-    });
+  /** Really hides the platform window once the fade-out animation has finished. */
+  private hidePlatformWindow() {
+    if (process.platform === 'win32') {
+      this.setIgnoreMouseEvents(true);
+      this.minimize();
+    } else if (process.platform === 'darwin') {
+      super.hide();
+      if (!this.kando.isSettingsDialogVisible()) {
+        app.hide();
+      }
+    } else {
+      super.hide();
+    }
   }
 
   /**
@@ -704,14 +723,14 @@ export class MenuWindow extends BrowserWindow {
    * @returns The menu item at the given path or null if no item is found at the path.
    */
   private getMenuItemAtPath(
-    root: DeepReadonly<RootMenuItem>,
+    root: DeepReadonly<RootMenuItem | DisplayedRootMenuItem>,
     path: number[]
-  ): DeepReadonly<MenuItem> | null {
+  ): DeepReadonly<MenuItem | DisplayedMenuItem> | null {
     if (path.length === 0) {
       return root;
     }
 
-    let item: DeepReadonly<MenuItem> = root;
+    let item: DeepReadonly<MenuItem | DisplayedMenuItem> = root;
 
     for (const index of path) {
       if (item.type !== 'submenu' && item.type !== 'root') {
@@ -721,7 +740,7 @@ export class MenuWindow extends BrowserWindow {
       if (!item.children || index < 0 || index >= item.children.length) {
         return null;
       }
-      item = item.children[index];
+      item = item.children[index] as DeepReadonly<MenuItem | DisplayedMenuItem>;
     }
 
     return item;
@@ -753,11 +772,41 @@ export class MenuWindow extends BrowserWindow {
         type: MenuInteractionType,
         path: number[],
         time: number,
-        source: SelectionSource
+        source: SelectionSource,
+        modifiers?: Modifiers,
+        rawGeneration?: number
       ) => {
-        // In any case, we report the interaction to whoever requested the menu.
-        this.ipcCallback(type, path);
+        const generation = normalizeMenuGeneration(rawGeneration);
 
+        // A menu which is already being replaced may still be on screen for a frame or
+        // two. Its paths refer to the previous tree, so dispatching them could act on a
+        // different item. The check fails closed: an interaction without a valid
+        // positive generation is dropped, except for closeMenu which must always be
+        // handled so that a close request does not wait forever.
+        if (
+          type !== MenuInteractionType.eCloseMenu &&
+          isStaleInteraction(generation, this.hideCoordinator.displayedGeneration)
+        ) {
+          console.debug(
+            'Ignoring interaction of a stale menu generation:',
+            type,
+            generation,
+            '!=',
+            this.hideCoordinator.displayedGeneration
+          );
+          return;
+        }
+
+        // In any case, we report the interaction to whoever requested the menu.
+        // Public IPC translation (V3.5): pure helper applied before ipcCallback
+        const translated = translateIpcInteraction(
+          type,
+          path,
+          this.currentResolvedTree?.pathMap
+        );
+        if (translated) {
+          this.ipcCallback(translated.type, translated.path, generation);
+        }
         // For open-menu, and close-submenu interactions, we do not need to execute any
         // workflows.
         if (
@@ -771,11 +820,22 @@ export class MenuWindow extends BrowserWindow {
         // no workflow to execute in this case. We only check whether no workflow was
         // executed in order to track the "cancels" achievement.
         if (type === MenuInteractionType.eCloseMenu) {
+          if (isStaleInteraction(generation, this.hideCoordinator.displayedGeneration)) {
+            console.debug(
+              'Ignoring close of a stale menu generation:',
+              generation,
+              '!=',
+              this.hideCoordinator.displayedGeneration
+            );
+            this.hideCoordinator.settleCloseRequest(generation);
+            return;
+          }
+
           try {
             await this.hideWindow();
-            this.settlePendingCloseMenu();
+            this.hideCoordinator.settleCloseRequest(generation);
           } catch (error) {
-            this.failPendingCloseMenu(error);
+            this.hideCoordinator.failCloseRequest(generation, error);
             throw error;
           }
 
@@ -785,7 +845,8 @@ export class MenuWindow extends BrowserWindow {
           return;
         }
 
-        const item = this.getMenuItemAtPath(this.lastMenu.root, path);
+        const activeRoot = this.lastDisplayedRoot ?? this.lastMenu.root;
+        const item = this.getMenuItemAtPath(activeRoot, path);
 
         if (!item) {
           console.error('No item found at path: ', path);
@@ -794,8 +855,8 @@ export class MenuWindow extends BrowserWindow {
 
         // The user clicked the root menu item.
         if (type === MenuInteractionType.eActivateMenu && item.type === 'root') {
-          if (this.lastMenu.root.activateWorkflow) {
-            this.executeWorkflow(this.lastMenu.root.activateWorkflow);
+          if (activeRoot.activateWorkflow) {
+            this.executeWorkflow(activeRoot.activateWorkflow);
           }
           return;
         }
@@ -829,22 +890,100 @@ export class MenuWindow extends BrowserWindow {
 
         // Finally, there is the select-workflow for buttons.
         if (type === MenuInteractionType.eSelectButton && item.type === 'button') {
+          // Capture the selection's generation BEFORE its first await.
+          const capturedGeneration = this.hideCoordinator.displayedGeneration;
+
           const menuOpeningPointerPosition = this.menuOpeningPointerPosition
             ? { ...this.menuOpeningPointerPosition }
             : undefined;
 
           await this.returnPointerToMenuOpeningPosition(menuOpeningPointerPosition);
 
-          if (item.selectWorkflow) {
-            await this.executeWorkflow(item.selectWorkflow);
+          // Re-check: if a newer menu was shown while the pointer was returning,
+          // the selection refers to a tree which has already been replaced.
+          if (this.hideCoordinator.displayedGeneration !== capturedGeneration) {
+            console.debug(
+              'Ignoring selection of a superseded menu generation:',
+              capturedGeneration,
+              '!=',
+              this.hideCoordinator.displayedGeneration
+            );
+            return;
           }
 
+          const normalizedModifiers: Modifiers =
+            modifiers && typeof modifiers === 'object'
+              ? {
+                  ctrl: Boolean(modifiers.ctrl),
+                  meta: Boolean(modifiers.meta),
+                  alt: Boolean(modifiers.alt),
+                  shift: Boolean(modifiers.shift),
+                }
+              : NO_MODIFIERS;
+
+          const displayedItem = item as DeepReadonly<DisplayedMenuItem>;
+          const appDecision = decideAppSelection(displayedItem, normalizedModifiers);
+
+          if (appDecision) {
+            const host = {
+              isVisible: () => this.isVisible(),
+              displayedGeneration: () => this.hideCoordinator.displayedGeneration,
+              closeMenu: () => this.closeMenu(),
+              awaitHide: (gen: number) => this.hideCoordinator.awaitHide(gen),
+              controlApp: (
+                target: string,
+                op: AppOp,
+                windowId?: number,
+                pid?: number
+              ) => {
+                const backend = this.kando.getBackend() as unknown as {
+                  controlApp(
+                    target: string,
+                    op: AppOp,
+                    windowId?: number,
+                    pid?: number
+                  ): void;
+                };
+                backend.controlApp(target, op, windowId, pid);
+              },
+            };
+
+            const overrides: WorkflowActionOverrides = new Map();
+            if (appDecision.launchActionToOverride) {
+              overrides.set(
+                appDecision.launchActionToOverride,
+                createAppOpOverride(
+                  host,
+                  {
+                    target: displayedItem.app?.target ?? '',
+                    op: appDecision.op,
+                    windowId: displayedItem.app?.windowId,
+                    pid: displayedItem.app?.pid,
+                  },
+                  capturedGeneration
+                )
+              );
+            }
+
+            for (const action of appDecision.workflowToExecute.actions ?? []) {
+              if (action.type === 'close-menu') {
+                overrides.set(action, createCloseMenuOverride(host, capturedGeneration));
+              }
+            }
+
+            await this.executeWorkflow(
+              appDecision.workflowToExecute,
+              overrides,
+              () => this.hideCoordinator.displayedGeneration === capturedGeneration
+            );
+          } else if (item.selectWorkflow) {
+            await this.executeWorkflow(item.selectWorkflow);
+          }
           this.kando.achievementTracker.onSelectionMade(
             Math.min(Math.max(path.length, 1), 3) as 1 | 2 | 3, // depth between 1 and 3
             time,
             source
           );
-
           this.lastSelections.push({ time, date: new Date() });
           if (this.lastSelections.length > 10) {
             this.lastSelections.shift();
@@ -900,12 +1039,21 @@ export class MenuWindow extends BrowserWindow {
    *
    * @param workflow The workflow to execute.
    */
-  private executeWorkflow(workflow: DeepReadonly<Workflow>) {
+  private executeWorkflow(
+    workflow: DeepReadonly<Workflow>,
+    overrides?: WorkflowActionOverrides,
+    shouldContinue?: () => boolean
+  ) {
     if (this.noopInteraction) {
       this.noopInteraction = WorkflowExecutor.getInstance().isNoopWorkflow(workflow);
     }
 
-    return WorkflowExecutor.getInstance().executeWorkflow(workflow, this.kando);
+    return WorkflowExecutor.getInstance().executeWorkflow(
+      workflow,
+      this.kando,
+      overrides,
+      shouldContinue
+    );
   }
 
   /**

@@ -10,6 +10,7 @@
 
 import * as math from '../../common/math';
 import { Vec2, SelectionSource } from '../../common';
+import { NO_MODIFIERS } from '../../common/app-switcher';
 import { Gamepad } from './gamepad';
 import { InputMethod, ButtonState, InputState, SelectionType } from './input-method';
 
@@ -57,7 +58,8 @@ export class GamepadInput extends InputMethod {
           this.selectCallback(
             this.centerPosition,
             SelectionType.eParent,
-            SelectionSource.eGamepad
+            SelectionSource.eGamepad,
+            NO_MODIFIERS
           );
           return;
         }
@@ -65,7 +67,8 @@ export class GamepadInput extends InputMethod {
         this.selectCallback(
           this.centerPosition,
           SelectionType.eActiveItem,
-          SelectionSource.eGamepad
+          SelectionSource.eGamepad,
+          NO_MODIFIERS
         );
       }
     });

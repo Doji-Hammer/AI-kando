@@ -48,7 +48,8 @@ import {
   tryLoadMenuSettingsFile,
   loadExportedMenu,
 } from './settings';
-import { IPCServer, IPCCallback } from '../common/ipc';
+import { IPCServer } from '../common/ipc';
+import { IPCObserverRegistry } from '../common/ipc/ipc-observer-registry';
 import { Notification } from './utils/notification';
 import { UpdateChecker } from './utils/update-checker';
 import { AchievementTracker } from './achievements/achievement-tracker';
@@ -93,7 +94,7 @@ export class KandoApp {
   private ipcServer: IPCServer;
 
   /** This is used to keep track of all active IPC observers. */
-  private ipcObservers: Map<number, IPCCallback> = new Map();
+  private ipcObservers = new IPCObserverRegistry();
 
   /** This contains the last WMInfo which was received. */
   private lastWMInfo?: WMInfo;
@@ -228,17 +229,24 @@ export class KandoApp {
         hoverMode: false,
         tags: [],
       };
-      this.showMenu({ menu });
+
+      // The one-time observer which the IPC server registers right after this event
+      // belongs to the menu shown for this request. It is bound to that menu's
+      // generation, so that late events of a previously shown menu never end it.
+      const ticket = this.ipcObservers.announceOneTime();
+      this.showMenu({ menu }, (generation) =>
+        this.ipcObservers.bindOneTime(ticket, generation)
+      );
     });
 
     // When a IPC client registers as observer, we store it.
     this.ipcServer.on('start-observing', (observerID, callback) => {
-      this.ipcObservers.set(observerID, callback);
+      this.ipcObservers.add(observerID, callback);
     });
 
     // When a IPC client stops observing, we remove it from the list.
-    this.ipcServer.on('stop-observing', (observerID) => {
-      this.ipcObservers.delete(observerID);
+    this.ipcServer.on('stop-observing', (observerID, callback) => {
+      this.ipcObservers.remove(observerID, callback);
     });
 
     // Initialize the common IPC communication to the renderer process. This will be
@@ -421,8 +429,12 @@ export class KandoApp {
    * the current window and pointer position and send them to the renderer process.
    *
    * @param request Required information to select correct menu.
+   * @param onGeneration Called with the generation of the menu this request shows.
    */
-  public async showMenu(request: ShowMenuRequest) {
+  public async showMenu(
+    request: ShowMenuRequest,
+    onGeneration?: (generation: number) => void
+  ) {
     // Create and load the main window if it does not exist yet.
     if (!this.menuWindow) {
       await this.createMenuWindow();
@@ -446,7 +458,12 @@ export class KandoApp {
     }
 
     try {
-      await this.menuWindow.showMenu(request, this.lastWMInfo, systemIconsChanged);
+      await this.menuWindow.showMenu(
+        request,
+        this.lastWMInfo,
+        systemIconsChanged,
+        onGeneration
+      );
     } catch (error) {
       Notification.show({
         title: 'Failed to show menu',
@@ -518,10 +535,8 @@ export class KandoApp {
   private async createMenuWindow() {
     this.menuWindow = new MenuWindow(
       this,
-      (interaction: MenuInteractionType, path: number[]) => {
-        for (const observer of this.ipcObservers.values()) {
-          observer(interaction, path);
-        }
+      (interaction: MenuInteractionType, path: number[], generation: number) => {
+        this.ipcObservers.dispatch(interaction, path, generation);
       }
     );
 

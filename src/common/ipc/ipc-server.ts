@@ -17,6 +17,13 @@ import * as IPCTypes from './types';
 
 import { TypedEventEmitter, MenuInteractionType, RootMenuItem } from '..';
 
+/**
+ * Callback for menu interactions reported to IPC observers.
+ *
+ * Paths passed to this callback always refer to items in the source (stored) menu tree.
+ * For converted multi-window app items, selections on synthetic window children map to
+ * the source app button path, and synthetic submenu navigation events are suppressed.
+ */
 export type IPCCallback = (interaction: MenuInteractionType, path: number[]) => void;
 
 /** These events are emitted by the IPC server when clients send requests. */
@@ -28,7 +35,7 @@ type IPCServerEvents = {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   'start-observing': [observerID: number, callback: IPCCallback];
   // eslint-disable-next-line @typescript-eslint/naming-convention
-  'stop-observing': [observerID: number];
+  'stop-observing': [observerID: number, callback?: IPCCallback];
 };
 
 /**
@@ -163,10 +170,12 @@ export class IPCServer extends (EventEmitter as new () => TypedEventEmitter<IPCS
    */
   private handleConnection(ws: WebSocket) {
     let observerID = -1; // Will be assigned if the client registers as an observer.
+    let registeredCallback: IPCCallback | null = null;
 
     const stopObserving = () => {
-      this.emit('stop-observing', observerID);
+      this.emit('stop-observing', observerID, registeredCallback ?? undefined);
       observerID = -1;
+      registeredCallback = null;
     };
 
     const startObserving = (oneTime: boolean) => {
@@ -177,23 +186,25 @@ export class IPCServer extends (EventEmitter as new () => TypedEventEmitter<IPCS
         observerID = this.nextObserverID++;
       }
 
-      this.emit(
-        'start-observing',
-        observerID,
-        (interaction: MenuInteractionType, path: number[]) => {
-          const message: IPCTypes.MenuInteractionMessage = {
-            type: 'menu-interaction',
-            interaction,
-            path,
-          };
+      const callback: IPCCallback = (
+        interaction: MenuInteractionType,
+        path: number[]
+      ) => {
+        const message: IPCTypes.MenuInteractionMessage = {
+          type: 'menu-interaction',
+          interaction,
+          path,
+        };
 
-          ws.send(JSON.stringify(message));
+        ws.send(JSON.stringify(message));
 
-          if (oneTime && interaction === 'closeMenu') {
-            stopObserving();
-          }
+        if (oneTime && interaction === 'closeMenu') {
+          stopObserving();
         }
-      );
+      };
+
+      registeredCallback = callback;
+      this.emit('start-observing', observerID, callback);
     };
 
     ws.on('message', (data) => {
@@ -224,6 +235,13 @@ export class IPCServer extends (EventEmitter as new () => TypedEventEmitter<IPCS
       const showCustomMenuParse = IPCTypes.SHOW_CUSTOM_MENU_MESSAGE.safeParse(msg);
       if (showCustomMenuParse.success) {
         const showCustomMenuMsg = showCustomMenuParse.data;
+
+        // If the client is currently registered as an observer, retire that registration
+        // before establishing the one-time observer for this custom menu session.
+        if (observerID !== -1) {
+          stopObserving();
+        }
+
         this.emit('show-custom-menu', showCustomMenuMsg.menu);
         startObserving(true); // One-time observer for this menu interaction.
         return;
@@ -281,7 +299,7 @@ export class IPCServer extends (EventEmitter as new () => TypedEventEmitter<IPCS
     // Stop observing if the client disconnects.
     ws.on('close', () => {
       if (observerID !== -1) {
-        this.emit('stop-observing', observerID);
+        this.emit('stop-observing', observerID, registeredCallback ?? undefined);
       }
     });
   }

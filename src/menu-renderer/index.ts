@@ -19,8 +19,9 @@ import { MenuTheme } from './menu-theme';
 import { SoundTheme } from './sound-theme';
 import { IconThemeRegistry } from '../common/icon-themes/icon-theme-registry';
 import { CenterText } from './center-text';
-import { MenuInteractionType } from '../common';
-
+import { SelectionSource, MenuInteractionType } from '../common';
+import { NO_MODIFIERS } from '../common/app-switcher';
+import { RendererMenuCoordinator } from '../common/app-switcher-logic';
 /**
  * This file is the main entry point for Kando's menu renderer process. It is responsible
  * for drawing the menu and handling user input. It is created when Kando starts and stays
@@ -119,31 +120,78 @@ Promise.all([
     settings
   );
 
+  // Coordinates menu installation, pending-show cancellation, and generation-bound close
+  // acknowledgements on the renderer side.
+  const coordinator = new RendererMenuCoordinator();
+
   // Show the menu when the main process requests it.
-  window.menuAPI.onShowMenu(async (root, menuOptions) => {
+  window.menuAPI.onShowMenu(async (root, menuOptions, _environmentInfo, generation) => {
+    coordinator.recordShowRequest(generation);
+
     if (menuOptions.systemIconsChanged) {
       await IconThemeRegistry.getInstance().reloadSystemIcons();
     }
+
+    if (!coordinator.canInstall(generation)) {
+      return;
+    }
+
+    coordinator.recordInstalled(generation);
+    window.menuAPI.setDisplayedMenuGeneration(generation);
     menu.show(root, menuOptions);
     settingsButton.show();
   });
 
   // Tell the menu about interactions triggered by the host process. This includes closing
   // the menu or closing the current submenu.
-  window.menuAPI.onTriggerInteraction((type) => {
+  window.menuAPI.onTriggerInteraction((type, generation) => {
+    if (type === MenuInteractionType.eCloseMenu) {
+      coordinator.closeFromHost(generation, {
+        hideInstalled: () => {
+          menu.triggerInteraction(type);
+          settingsButton.hide();
+        },
+        sendAck: (ackGeneration, didHideInstalled) => {
+          if (didHideInstalled) {
+            window.menuAPI.setDisplayedMenuGeneration(0);
+          }
+          window.menuAPI.finalizeInteraction(
+            MenuInteractionType.eCloseMenu,
+            [],
+            0,
+            SelectionSource.eUnknown,
+            NO_MODIFIERS,
+            ackGeneration
+          );
+        },
+      });
+      return;
+    }
+
     menu.triggerInteraction(type);
   });
 
   // Tell the host process about interactions triggered by the user or also by the host
   // process itself via the onTriggerInteraction function.
-  menu.on('interaction', (type, path, time, source) => {
-    window.menuAPI.finalizeInteraction(type, path, time, source);
-
-    // If the menu was closed, we also hide the settings button.
-    if (type === 'closeMenu') {
-      settingsButton.hide();
+  menu.on('interaction', (type, path, time, source, modifiers) => {
+    // When a close was triggered by the host, closeFromHost has already acknowledged it
+    // with the target generation.
+    if (type === MenuInteractionType.eCloseMenu && coordinator.isClosingFromHost) {
+      soundTheme.playSound(type);
+      return;
     }
 
+    if (type === MenuInteractionType.eCloseMenu) {
+      const closingGen = coordinator.displayedMenuGeneration;
+      coordinator.recordClosed();
+      window.menuAPI.setDisplayedMenuGeneration(0);
+      settingsButton.hide();
+      window.menuAPI.finalizeInteraction(type, path, time, source, modifiers, closingGen);
+      soundTheme.playSound(type);
+      return;
+    }
+
+    window.menuAPI.finalizeInteraction(type, path, time, source, modifiers);
     soundTheme.playSound(type);
   });
 

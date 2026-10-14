@@ -13,11 +13,13 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 
+import WebSocket from 'ws';
 import * as IPCTypes from '../src/common/ipc/types';
 import { MenuInteractionType, RootMenuItem } from '../src/common';
 import { IPCServer } from '../src/common/ipc/ipc-server';
 import { IPCShowCustomMenuClient } from '../src/common/ipc/ipc-show-custom-menu-client';
 
+import { IPCObserverRegistry } from '../src/common/ipc/ipc-observer-registry';
 describe('IPC show-custom-menu Protocol', function () {
   const tmpDir = path.join(os.tmpdir(), 'kando_ipc_test');
   const infoPath = path.join(tmpDir, 'ipc-info.json');
@@ -160,5 +162,93 @@ describe('IPC show-custom-menu Protocol', function () {
     expect(errorReceived).to.be.true;
 
     client.close();
+  });
+
+  it('retires persistent observer registration when transitioning to show-custom-menu and leaves no registration on disconnect', async function () {
+    const registry = new IPCObserverRegistry();
+
+    server.on('start-observing', (observerID, callback) => {
+      registry.add(observerID, callback);
+    });
+    server.on('stop-observing', (observerID, callback) => {
+      registry.remove(observerID, callback);
+    });
+    server.on('show-custom-menu', () => {
+      const ticket = registry.announceOneTime();
+      setImmediate(() => {
+        registry.bindOneTime(ticket, 2);
+      });
+    });
+
+    const info = JSON.parse(fs.readFileSync(infoPath, 'utf-8'));
+    const ws = new WebSocket(`ws://127.0.0.1:${info.port}`);
+    await new Promise((resolve) => ws.on('open', resolve));
+
+    const receivedEvents: Array<{ interaction: MenuInteractionType; path: number[] }> =
+      [];
+    ws.on('message', (data) => {
+      const parsed = JSON.parse(data.toString());
+      if (parsed.type === 'menu-interaction') {
+        receivedEvents.push({ interaction: parsed.interaction, path: parsed.path });
+      }
+    });
+    const waitForEvents = async (expectedCount: number) => {
+      const deadline = Date.now() + 500;
+      while (receivedEvents.length < expectedCount && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    };
+
+    // 1. Start observing as persistent observer
+    ws.send(JSON.stringify({ type: 'start-observing' }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Persistent observer receives events across any generation
+    registry.dispatch(MenuInteractionType.eHoverButton, [0], 1);
+    await waitForEvents(1);
+    expect(receivedEvents).to.deep.equal([
+      { interaction: MenuInteractionType.eHoverButton, path: [0] },
+    ]);
+
+    // 2. Client transitions from persistent observer to show-custom-menu
+    ws.send(
+      JSON.stringify({
+        type: 'show-custom-menu',
+        menu: {
+          name: 'TestMenu',
+          type: 'root',
+          icon: 'icon',
+          iconTheme: 'iconTheme',
+          children: [],
+        },
+      })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Persistent callback must be retired: events of older/other generations (1) no longer arrive
+    registry.dispatch(MenuInteractionType.eHoverButton, [1], 1);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(receivedEvents).to.have.length(1);
+
+    // One-time observer receives events bound to generation 2
+    registry.dispatch(MenuInteractionType.eHoverButton, [2], 2);
+    await waitForEvents(2);
+    expect(receivedEvents).to.have.length(2);
+    expect(receivedEvents[1]).to.deep.equal({
+      interaction: MenuInteractionType.eHoverButton,
+      path: [2],
+    });
+
+    // 3. Client disconnects
+    ws.close();
+    await new Promise((resolve) => ws.on('close', resolve));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // No registration remains in registry for this connection
+    expect(registry.remove(IPCObserverRegistry.cOneTimeObserverID)).to.be.false;
+
+    // Persistent callback no longer receives events
+    registry.dispatch(MenuInteractionType.eHoverButton, [3], 2);
+    expect(receivedEvents).to.have.length(2);
   });
 });

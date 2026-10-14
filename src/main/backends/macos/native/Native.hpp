@@ -83,6 +83,24 @@ class Native : public Napi::Addon<Native> {
    */
   Napi::Value listInstalledApplications(const Napi::CallbackInfo& info);
 
+  /**
+   * Retrieves application running state and windows for an array of targets, bounded
+   * by a single shared 150 ms best-effort deadline (not a guaranteed completion time).
+   * Every AX query inside arms its own element with the remaining budget; running
+   * detection itself does not need AX. A target whose windows could not all be
+   * queried is reported with `windowsKnown: false` and no windows.
+   */
+  Napi::Value getAppStates(const Napi::CallbackInfo& info);
+
+  /**
+   * Performs an operation on a running application or one of its windows, bounded by a
+   * 500 ms best-effort deadline per call (not a guaranteed completion time).
+   *
+   * `'close-tab'` is gated on unverified per-browser tab-strip rules: it is a no-op
+   * unless the process was started with KANDO_UNVERIFIED_TAB_CLOSE=1.
+   */
+  void controlApp(const Napi::CallbackInfo& info);
+
   // We have to keep track of the current modifier mask to be able to simulate key
   // presses.
   uint32_t mLeftModifierMask  = 0;

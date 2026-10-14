@@ -14,5 +14,6 @@ Here are some quick links to get you started:
 - [Installation on macOS](https://kando.menu/installation-on-macos/)
 - [Compiling Kando from Source](https://kando.menu/compile-from-source/)
 - [Config-file Reference](https://kando.menu/config-files/)
+- [Smart App Switcher (macOS)](app-switcher.md)
 
 <p align="center"><img src ="img/hr.svg" /></p>

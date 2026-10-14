@@ -10,6 +10,11 @@
 
 import * as math from '../../common/math';
 import { Vec2, SelectionSource } from '../../common';
+import { Modifiers, NO_MODIFIERS } from '../../common/app-switcher';
+import {
+  modifiersForPointerRelease,
+  PrimaryPressTracker,
+} from '../../common/app-switcher-logic';
 import { InputMethod, ButtonState, InputState, SelectionType } from './input-method';
 import { GestureDetector } from './gesture-detector';
 
@@ -97,6 +102,14 @@ export class PointerInput extends InputMethod {
    */
   private throttledMotionEvent: boolean = false;
 
+  /**
+   * Tracks a discrete primary mouse press made while the current menu is shown, from its
+   * press to its release. Only a release which ends such a press, without the pointer
+   * having been dragged away from the press position, may carry modifiers into a
+   * selection.
+   */
+  private primaryPress = new PrimaryPressTracker();
+
   /** Creates a new PointerInput instance. */
   constructor() {
     super();
@@ -110,7 +123,8 @@ export class PointerInput extends InputMethod {
         this.enableHoverMode && !this.hoverModeNeedsConfirmation
           ? SelectionType.eActiveItem
           : SelectionType.eSubmenuOnly,
-        SelectionSource.eGesture
+        SelectionSource.eGesture,
+        NO_MODIFIERS
       );
     });
   }
@@ -135,6 +149,16 @@ export class PointerInput extends InputMethod {
     this.ignoreMotionEvents = 2;
     this.buttonState = ButtonState.eReleased;
     this.deferredTurboMode = deferTurboMode;
+    this.primaryPress.cancel();
+  }
+
+  /**
+   * Drops the pending gesture state: a press which is cancelled, interrupted by focus
+   * loss, or left over from a hidden menu can never turn into a modified selection.
+   */
+  public cancelGesture() {
+    this.primaryPress.cancel();
+    this.clickPosition = null;
   }
 
   /*
@@ -145,6 +169,18 @@ export class PointerInput extends InputMethod {
   public onMotionEvent(event: MouseEvent | TouchEvent) {
     event.preventDefault();
     event.stopPropagation();
+
+    // Evaluated on every incoming event, before throttling can discard any of them, so
+    // that an excursion away from the press position can not go unnoticed. A delivered
+    // pointer event may also merge several motion samples, so each of them is checked as
+    // well: an out-and-back movement inside one event must not look like a click.
+    if (event instanceof MouseEvent) {
+      const samples = (event as PointerEvent).getCoalescedEvents?.() ?? [];
+      for (const sample of samples) {
+        this.primaryPress.move(sample.clientX, sample.clientY, this.dragThreshold);
+      }
+      this.primaryPress.move(event.clientX, event.clientY, this.dragThreshold);
+    }
 
     // Ignore mouse motion events if requested.
     if (this.ignoreMotionEvents > 0) {
@@ -182,7 +218,7 @@ export class PointerInput extends InputMethod {
     const canEnterTurboMode =
       (this.enableTurboMode || this.enableHoverMode) &&
       !this.deferredTurboMode &&
-      this.buttonState !== ButtonState.eDragged;
+      this.buttonState === ButtonState.eReleased;
 
     if (canEnterTurboMode) {
       if (
@@ -222,7 +258,16 @@ export class PointerInput extends InputMethod {
     event.preventDefault();
     event.stopPropagation();
 
-    // Go back or hide the menu on right click events.
+    // Any new press first drops the previous one; only an eligible primary press below
+    // starts tracking again.
+    this.primaryPress.cancel();
+
+    // Go back or hide the menu on right click events. A Control+left-click on macOS may
+    // arrive here as button === 2 as well, but no captured Electron 43.7 event sequence
+    // confirms it, and an unverified gesture must never map to a Control-modified
+    // selection (which quits the app). So button === 2 always takes this back/cancel
+    // branch. The open question and what would settle it are recorded in the
+    // debugLogPointerEvent diagnostic in menu.ts.
     if ((event as MouseEvent).button === 2) {
       this.closeCallback();
       return;
@@ -233,9 +278,21 @@ export class PointerInput extends InputMethod {
       this.selectCallback(
         this.pointerPosition,
         SelectionType.eParent,
-        SelectionSource.eClick
+        SelectionSource.eClick,
+        NO_MODIFIERS
       );
       return;
+    }
+
+    // Only a discrete primary mouse press which happens while this menu is shown may
+    // later carry modifiers into a selection. A button which is still held from before
+    // the menu was shown, touch and pen input never qualify.
+    if (
+      event instanceof MouseEvent &&
+      event.button === 0 &&
+      (!('pointerType' in event) || event.pointerType === 'mouse')
+    ) {
+      this.primaryPress.begin(event.clientX, event.clientY);
     }
 
     if (event instanceof MouseEvent) {
@@ -268,16 +325,51 @@ export class PointerInput extends InputMethod {
     this.gestureDetector.reset();
 
     const clickSelection = this.buttonState === ButtonState.eClicked;
+    const pressOwned =
+      event instanceof MouseEvent
+        ? this.primaryPress.release(event.clientX, event.clientY, this.dragThreshold)
+        : false;
+    this.primaryPress.cancel();
 
     // Do not trigger marking-mode selections on the center item.
     const markingModeSelection =
       this.buttonState === ButtonState.eDragged &&
       math.getDistance(this.pointerPosition, this.centerPosition) > this.centerRadius;
+
     if (clickSelection || markingModeSelection) {
+      // A discrete primary mouse click (button 0) with Control held selects with {ctrl};
+      // that is a genuine macOS Control-click. Whether a Control-click ever arrives as
+      // button === 2 on Electron 43.7 is unconfirmed, so it is treated as an ordinary
+      // right-click above. The debugLogPointerEvent diagnostic records the sequences that
+      // would settle it. Releases of any other button (for example the right button of a
+      // back/cancel gesture), releases whose press was not made in this menu session,
+      // drags (marking/turbo), and touch or pen input never carry modifiers, so such a
+      // gesture can not end in a quit/close selection. Turbo, gesture and gamepad
+      // selections always report neutral modifiers.
+      const modifiers: Modifiers =
+        'ctrlKey' in event
+          ? modifiersForPointerRelease(
+              {
+                button: 'button' in event ? event.button : -1,
+                pointerType:
+                  event instanceof PointerEvent ? event.pointerType : undefined,
+                pressOwned,
+                discreteClick: clickSelection,
+              },
+              {
+                ctrl: event.ctrlKey,
+                meta: event.metaKey,
+                alt: event.altKey,
+                shift: event.shiftKey,
+              }
+            )
+          : NO_MODIFIERS;
+
       this.selectCallback(
         this.pointerPosition,
         SelectionType.eActiveItem,
-        SelectionSource.eClick
+        SelectionSource.eClick,
+        modifiers
       );
     }
 
@@ -339,7 +431,8 @@ export class PointerInput extends InputMethod {
         this.selectCallback(
           this.pointerPosition,
           SelectionType.eActiveItem,
-          SelectionSource.eGesture
+          SelectionSource.eGesture,
+          NO_MODIFIERS
         );
       }
 

@@ -18,6 +18,20 @@ import {
   MenuInteractionType,
   RootMenuItem,
 } from '../common';
+import { Modifiers, NO_MODIFIERS } from '../common/app-switcher';
+import {
+  parseShowMenuArgs,
+  parseTriggerInteractionArgs,
+  stampInteraction,
+  normalizeMenuGeneration,
+} from '../common/app-switcher-logic';
+/**
+ * The displayed-menu generation of the menu which the host last sent. The host bumps it
+ * on every show, and the main process drops interactions which belong to an older menu,
+ * so that a click in a menu which is already being replaced cannot select a different
+ * item.
+ */
+let displayedMenuGeneration = 0;
 
 /**
  * These functions are available in the menu window's renderer process. They are available
@@ -47,10 +61,30 @@ export const MENU_WINDOW_API = {
    *
    * @param callback This callback will be called when a new menu should be shown.
    */
-  onShowMenu: (func: (root: RootMenuItem, menuOptions: ShowMenuOptions) => void) => {
-    ipcRenderer.on('menu-window.show-menu', (event, root, menuOptions) =>
-      func(root, menuOptions)
+  onShowMenu: (
+    func: (
+      root: RootMenuItem,
+      menuOptions: ShowMenuOptions,
+      environmentInfo: unknown,
+      generation: number
+    ) => void
+  ) => {
+    ipcRenderer.on(
+      'menu-window.show-menu',
+      (event, root, menuOptions, environmentInfo, generation) => {
+        const parsed = parseShowMenuArgs(root, menuOptions, environmentInfo, generation);
+        func(parsed.root, parsed.menuOptions, parsed.environmentInfo, parsed.generation);
+      }
     );
+  },
+
+  /**
+   * Publishes the displayed-menu generation to the preload. The renderer calls this when
+   * it installs the menu tree with menu.show(), so that interactions are stamped with the
+   * generation of the tree which is really on screen.
+   */
+  setDisplayedMenuGeneration: (generation: number) => {
+    displayedMenuGeneration = normalizeMenuGeneration(generation);
   },
 
   /**
@@ -58,15 +92,23 @@ export const MENU_WINDOW_API = {
    * as closing the menu or closing the current submenu. The renderer process will act
    * accordingly and call the finalizeInteraction callback afterwards.
    *
-   * @param callback This callback will be called when the host process requests a menu
+   * For close triggers, the host passes the generation of the menu tree to close, so that
+   * pending shows can be cancelled and the close interaction can be stamped with the
+   * requested generation.
+   *
+   * @param func This callback will be called when the host process requests a menu
    *   interaction.
    */
   onTriggerInteraction: (
     func: (
-      type: MenuInteractionType.eCloseMenu | MenuInteractionType.eCloseSubmenu
+      type: MenuInteractionType.eCloseMenu | MenuInteractionType.eCloseSubmenu,
+      generation: number
     ) => void
   ) => {
-    ipcRenderer.on('menu-window.trigger-interaction', (event, type) => func(type));
+    ipcRenderer.on('menu-window.trigger-interaction', (event, type, rawGeneration) => {
+      const parsed = parseTriggerInteractionArgs(type, rawGeneration);
+      func(parsed.type, parsed.generation);
+    });
   },
 
   /**
@@ -81,6 +123,10 @@ export const MENU_WINDOW_API = {
    * The time and source parameters are used for achievement tracking. They are only
    * relevant for selection interactions like "selectButton".
    *
+   * The displayed-menu generation of the menu which produced the interaction is appended
+   * as the last argument. The host drops interactions of a menu which it has already
+   * replaced.
+   *
    * @param type The type of the interaction, e.g. opening a menu, hovering a button, etc.
    * @param path The path of the selected menu item.
    * @param time The time it took to select the item in milliseconds. This is used for
@@ -92,9 +138,18 @@ export const MENU_WINDOW_API = {
     type: MenuInteractionType,
     path: number[],
     time: number,
-    source: SelectionSource
+    source: SelectionSource,
+    modifiers: Modifiers = NO_MODIFIERS,
+    generation?: number
   ) => {
-    ipcRenderer.send('menu-window.finalize-interaction', type, path, time, source);
+    const genToStamp =
+      generation !== undefined
+        ? normalizeMenuGeneration(generation)
+        : displayedMenuGeneration;
+    ipcRenderer.send(
+      'menu-window.finalize-interaction',
+      ...stampInteraction(type, path, time, source, modifiers, genToStamp)
+    );
   },
 
   /** This will be called by the render process to show the settings window. */

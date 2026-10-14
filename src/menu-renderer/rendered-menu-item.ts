@@ -9,6 +9,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Vec2, RootMenuItem, ChildMenuItem, MenuItem, SubmenuMenuItem } from '../common';
+import type { RuntimeAppBinding } from '../common/app-switcher';
 
 /**
  * In the renderer process, we need to store some additional information for each menu
@@ -103,12 +104,15 @@ type RenderData = {
   quickSelectKeySymbol: string;
 };
 
+export type { DisplayedMenuItem } from '../common/app-switcher';
+
 /**
  * This type extends the MenuItem type with properties which are only used by the Menu
  * class in the renderer process.
  */
 export type RenderedMenuItem = {
   renderData?: RenderData;
+  app?: RuntimeAppBinding;
 } & MenuItem;
 
 /**
@@ -117,6 +121,7 @@ export type RenderedMenuItem = {
  */
 export type RenderedSubmenuMenuItem = {
   renderData?: RenderData;
+  app?: RuntimeAppBinding;
 } & SubmenuMenuItem;
 
 /**
@@ -125,6 +130,7 @@ export type RenderedSubmenuMenuItem = {
  */
 export type RenderedRootMenuItem = {
   renderData?: RenderData;
+  app?: RuntimeAppBinding;
 } & RootMenuItem;
 
 /**
@@ -133,4 +139,5 @@ export type RenderedRootMenuItem = {
  */
 export type RenderedChildMenuItem = {
   renderData?: RenderData;
+  app?: RuntimeAppBinding;
 } & ChildMenuItem;

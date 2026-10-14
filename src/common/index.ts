@@ -111,6 +111,12 @@ export type BackendInfo = {
 
   /** This determines whether the settings window should use transparency per default. */
   readonly shouldUseTransparentSettingsWindow: boolean;
+
+  /**
+   * Whether the backend supports application state resolution and control (e.g. macOS app
+   * switcher).
+   */
+  readonly supportsAppControl?: boolean;
 };
 
 /** This type describes some information about the current version of Kando. */

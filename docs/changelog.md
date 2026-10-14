@@ -22,6 +22,21 @@ The [Unreleased] section contains changes which are not released yet. If you wan
 
 **Release Date:** TBD
 
+### :tada: Added
+
+- **Smart application switcher on macOS**: Menu buttons that launch applications now detect running applications at runtime:
+  - **Running indicators**: A dot indicator appears on the icon for running applications.
+  - **Single-window applications**: Selecting focuses and activates the window.
+  - **Multi-window applications**: Automatically converts the item into a submenu listing all windows by title.
+  - **Modifier actions**: Holding modifiers while selecting an application performs native control:
+    - <kbd>Control</kbd>: Quits the application.
+    - <kbd>Command</kbd> (⌘): Closes the selected/focused window.
+    - <kbd>Option</kbd> (⌥): Closes the active tab in supported tabbed applications (2+ tabs; disabled by default).
+    - <kbd>Command</kbd>+<kbd>Option</kbd> (⌘⌥): Hides the application.
+  - **Non-running applications**: Unmodified selection launches the application; any modified selection does nothing (never launches).
+  - **Ordering**: For app items the menu closes before the native operation, even if the configured workflow had `close-menu` after the launch. When an app selection is superseded by a newer menu its remaining workflow actions are skipped and only registered finalizers still run; otherwise other actions and finalizers run in their configured order.
+  - **Permissions & Limitations**: Requires macOS Accessibility permissions for window enumeration and "event posting" access (checked via `CGPreflightPostEventAccess`) for closing tabs. Tab closing uses structural rules for Vivaldi, Google Chrome, Brave, Safari and Firefox that have not yet been validated against real accessibility trees, so it is disabled by default (and logs) unless `KANDO_UNVERIFIED_TAB_CLOSE=1` is set at process start for validation. Wall-clock and node traversal budgets are best-effort deadlines (not hard guarantees) until measured. Quick-select keys with modifiers are unsupported; the Purity theme intentionally hides the running dot on the active item; a `show-custom-menu` request dropped before a generation is allocated leaves its one-time observer silently unbound (clients must time out and clean up); macOS only.
+
 ### :bug: Fixed
 
 - Fixed an issue on macOS where the app picker showed duplicate entries (e.g. "Siri") which multiplied with each search. Thanks to [@skanpaul](https://github.com/skanpaul) for the fix!
@@ -29,7 +44,6 @@ The [Unreleased] section contains changes which are not released yet. If you wan
 - Fixed a regression on KDE Wayland 6.3 which would cause the shortcut settings of System Settings to open every time Kando was started. Thanks to [@Tailszefox](https://github.com/Tailszefox) for the fix!
 - <kbd>CMD</kbd>+<kbd>A</kbd> can now be used to select text in input fields on macOS.
 - Fixed an issue on KDE where the Flatpak version of Kando would not connect to the KWin integration plugin.
-
 ## [Kando 3.0.0](https://github.com/kando-menu/kando/releases/tag/v3.0.0)
 
 **Release Date:** 2026-09-23

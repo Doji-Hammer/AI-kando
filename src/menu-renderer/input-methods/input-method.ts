@@ -9,6 +9,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Vec2, SelectionSource } from '../../common';
+import { Modifiers } from '../../common/app-switcher';
 
 /**
  * The logical button state of the input device. This will be set to clicked once a button
@@ -85,7 +86,8 @@ export abstract class InputMethod {
   protected selectCallback: (
     position: Vec2,
     type: SelectionType,
-    source: SelectionSource
+    source: SelectionSource,
+    modifiers: Modifiers
   ) => void = () => {};
 
   /** This callback should be called whenever the menu should be closed. */
@@ -125,7 +127,12 @@ export abstract class InputMethod {
    * @param callback - This will be called whenever an item should be selected.
    */
   public onSelection(
-    callback: (position: Vec2, type: SelectionType, source: SelectionSource) => void
+    callback: (
+      position: Vec2,
+      type: SelectionType,
+      source: SelectionSource,
+      modifiers: Modifiers
+    ) => void
   ) {
     this.selectCallback = callback;
   }

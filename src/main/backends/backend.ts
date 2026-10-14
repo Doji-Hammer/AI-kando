@@ -22,6 +22,7 @@ import {
   WindowDescription,
   GeneralSettings,
 } from '../../common';
+import { AppState, AppOp } from '../../common/app-switcher';
 import { Settings } from '../settings';
 
 /**
@@ -98,6 +99,39 @@ export abstract class Backend extends EventEmitter {
    * @returns A promise which resolves when the window has been focused.
    */
   public abstract focusWindow(window: WindowDescription): Promise<void>;
+  /**
+   * Returns the running state and window information for the given application targets.
+   *
+   * @param targets The list of application targets (e.g. app names or bundle
+   *   identifiers).
+   * @returns An array of AppState objects corresponding to the requested targets.
+   */
+  public getAppStates(targets: string[]): AppState[] {
+    return targets.map((): AppState => ({
+      running: false,
+      windows: [],
+      windowsKnown: true,
+    }));
+  }
+
+  /**
+   * Performs an operation on a running application or one of its windows.
+   *
+   * @param target The application target.
+   * @param op The operation to perform.
+   * @param windowId Optional window identity.
+   * @param pid Optional process identifier.
+   */
+  public controlApp(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    target: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    op: AppOp,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    windowId?: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    pid?: number
+  ): void {}
 
   /**
    * Each backend must provide a way to get a list of all installed applications. This is
