@@ -10,6 +10,71 @@
 
 import * as z from 'zod';
 import { version } from './../../../package.json';
+import { DEFAULT_QUICK_CLOSE_BINDINGS } from '../app-switcher';
+import { validateQuickCloseConfig } from '../quick-close-validation';
+
+/** Schema for an individual action's modifier combination. */
+export const MODIFIERS_SCHEMA_V2 = z.object({
+  ctrl: z.boolean().default(false),
+  meta: z.boolean().default(false),
+  alt: z.boolean().default(false),
+  shift: z.boolean().default(false),
+});
+
+/** Schema for the bindings of all four Quick close actions. */
+export const QUICK_CLOSE_BINDINGS_SCHEMA_V2 = z.object({
+  quit: MODIFIERS_SCHEMA_V2.default(DEFAULT_QUICK_CLOSE_BINDINGS.quit),
+  closeWindow: MODIFIERS_SCHEMA_V2.default(DEFAULT_QUICK_CLOSE_BINDINGS.closeWindow),
+  closeTab: MODIFIERS_SCHEMA_V2.default(DEFAULT_QUICK_CLOSE_BINDINGS.closeTab),
+  hide: MODIFIERS_SCHEMA_V2.default(DEFAULT_QUICK_CLOSE_BINDINGS.hide),
+});
+
+/**
+ * Strict schema for Quick close configuration. Enforces that every binding is non-empty
+ * and no two actions share the same combination.
+ */
+export const QUICK_CLOSE_CONFIG_SCHEMA_V2 = z
+  .object({
+    enabled: z.boolean().default(false),
+    bindings: QUICK_CLOSE_BINDINGS_SCHEMA_V2.default(DEFAULT_QUICK_CLOSE_BINDINGS),
+  })
+  .refine((config) => validateQuickCloseConfig(config).ok, {
+    message:
+      'Every quick-close binding must have at least one modifier and no two actions may share the same combination.',
+  });
+
+/**
+ * Schema for persisted Quick close configuration in a menu.
+ *
+ * Rules:
+ *
+ * - Absent (`undefined`): stays absent (legacy ON).
+ * - Present but invalid: recovered to explicit disabled defaults with a console warning.
+ * - Present and valid: parsed strictly.
+ */
+export const STORED_QUICK_CLOSE_SCHEMA_V2 = z.preprocess((val) => {
+  if (val === undefined) {
+    return undefined;
+  }
+  const validation = validateQuickCloseConfig(val);
+  if (validation.ok) {
+    return validation.config;
+  }
+  const reason =
+    'reason' in validation ? validation.reason : 'Invalid quick-close configuration.';
+  console.warn(
+    `Recovered malformed quickClose setting: ${reason}. Falling back to disabled defaults.`
+  );
+  return {
+    enabled: false,
+    bindings: {
+      quit: { ...DEFAULT_QUICK_CLOSE_BINDINGS.quit },
+      closeWindow: { ...DEFAULT_QUICK_CLOSE_BINDINGS.closeWindow },
+      closeTab: { ...DEFAULT_QUICK_CLOSE_BINDINGS.closeTab },
+      hide: { ...DEFAULT_QUICK_CLOSE_BINDINGS.hide },
+    },
+  };
+}, QUICK_CLOSE_CONFIG_SCHEMA_V2.optional());
 
 // ------------------------------------------------------------------------------------ //
 // #region                        Workflow Actions
@@ -361,6 +426,11 @@ export const MENU_SCHEMA_V2 = z.object({
 
   /** Tags can be used to group and filter menus. */
   tags: z.array(z.string()).default([]),
+  /**
+   * Quick close configuration. If absent, legacy behavior applies (enabled with default
+   * bindings).
+   */
+  quickClose: STORED_QUICK_CLOSE_SCHEMA_V2,
 });
 
 // ------------------------------------------------------------------------------------ //
@@ -450,3 +520,5 @@ export type MenuItemV2 = RootMenuItemV2 | ChildMenuItemV2;
 export type MenuConditionsV2 = z.infer<typeof MENU_CONDITIONS_SCHEMA_V2>;
 export type MenuCollectionV2 = z.infer<typeof MENU_COLLECTION_SCHEMA_V2>;
 export type MenuSettingsV2 = z.infer<typeof MENU_SETTINGS_SCHEMA_V2>;
+export type StoredQuickCloseV2 = z.infer<typeof STORED_QUICK_CLOSE_SCHEMA_V2>;
+export type QuickCloseConfigV2 = z.infer<typeof QUICK_CLOSE_CONFIG_SCHEMA_V2>;

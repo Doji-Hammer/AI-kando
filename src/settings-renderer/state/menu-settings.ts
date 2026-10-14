@@ -23,6 +23,7 @@ import {
   SubmenuMenuItem,
   RootMenuItem,
 } from '../../common';
+import { DEFAULT_QUICK_CLOSE_BINDINGS } from '../../common/app-switcher';
 
 // The menu settings state object allows access, modification, and change notification of
 // the settings stored in the user's menus.json. It uses a temporal store. That means that
@@ -184,6 +185,15 @@ export const useMenuSettings = create<MenuSettings & MenuStateActions>()(
               fixedMenuPosition: { x: 0.5, y: 0.5 },
               anchored: false,
               hoverMode: false,
+              quickClose: {
+                enabled: false,
+                bindings: {
+                  quit: { ...DEFAULT_QUICK_CLOSE_BINDINGS.quit },
+                  closeWindow: { ...DEFAULT_QUICK_CLOSE_BINDINGS.closeWindow },
+                  closeTab: { ...DEFAULT_QUICK_CLOSE_BINDINGS.closeTab },
+                  hide: { ...DEFAULT_QUICK_CLOSE_BINDINGS.hide },
+                },
+              },
               tags,
               root: {
                 type: 'root',

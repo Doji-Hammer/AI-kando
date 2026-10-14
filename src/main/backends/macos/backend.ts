@@ -23,6 +23,8 @@ import {
 import { mapKeys } from '../../../common/key-codes';
 import { AppState, AppOp } from '../../../common/app-switcher';
 
+const quickCloseTabAvailable = process.env.KANDO_UNVERIFIED_TAB_CLOSE === '1';
+
 export class MacosBackend extends Backend {
   /**
    * This is a list of all installed applications on the system. Currently, this is
@@ -50,6 +52,7 @@ export class MacosBackend extends Backend {
       supportsShortcuts: true,
       shouldUseTransparentSettingsWindow: true,
       supportsAppControl: true,
+      quickCloseTabAvailable,
     };
   }
 

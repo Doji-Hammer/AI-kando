@@ -37,6 +37,16 @@ The [Unreleased] section contains changes which are not released yet. If you wan
   - **Ordering**: For app items the menu closes before the native operation, even if the configured workflow had `close-menu` after the launch. When an app selection is superseded by a newer menu its remaining workflow actions are skipped and only registered finalizers still run; otherwise other actions and finalizers run in their configured order.
   - **Permissions & Limitations**: Requires macOS Accessibility permissions for window enumeration and "event posting" access (checked via `CGPreflightPostEventAccess`) for closing tabs. Tab closing uses structural rules for Vivaldi, Google Chrome, Brave, Safari and Firefox that have not yet been validated against real accessibility trees, so it is disabled by default (and logs) unless `KANDO_UNVERIFIED_TAB_CLOSE=1` is set at process start for validation. Wall-clock and node traversal budgets are best-effort deadlines (not hard guarantees) until measured. Quick-select keys with modifiers are unsupported; the Purity theme intentionally hides the running dot on the active item; a `show-custom-menu` request dropped before a generation is allocated leaves its one-time observer silently unbound (clients must time out and clean up); macOS only.
 
+- **Per-menu Quick close configuration**: Quick close can now be configured per menu in Menu Behavior:
+  - **Configurable bindings**: Each action (Quit app, Close window, Close tab, Hide app) can be rebound to any non-empty modifier combination using a modifier recorder (tab-close rebinding is read-only unless the tab-close capability gate is enabled).
+  - **Defaults and legacy compatibility**: Newly created menus have Quick close turned off by default. Existing menus stored without configuration remain enabled with default bindings.
+  - **Persistent data recovery**: Malformed quickClose configurations fall back safely to disabled defaults with a console warning instead of preventing settings loading.
+  - **Menu duplication**: Duplicating a menu copies its Quick close setting exactly (absence stays legacy ON).
+- **Custom endpoint provider for Assistant**: Added a "Custom endpoint" provider preset in Assistant settings that starts with an empty endpoint and unset API format, requiring explicit entry for both.
+
+### :wrench: Changed
+
+- **Settings window clean-up**: Simplified the General Settings dialog by hiding color scheme, flavor, and tray icon variants from the UI, and pinned the settings window to light mode.
 ### :bug: Fixed
 
 - Fixed an issue on macOS where the app picker showed duplicate entries (e.g. "Siri") which multiplied with each search. Thanks to [@skanpaul](https://github.com/skanpaul) for the fix!

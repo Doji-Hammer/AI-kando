@@ -26,16 +26,16 @@
   // see-through areas are gone, so the look is the same on every Mac.
   background: $wallpaper; // light only (light-dark() cannot take a gradient)
 
-  &.sakuraSystemFlavor,
-  &.transparentSystemFlavor {
-    color-scheme: light dark;
-  }
-
-  &.sakuraDarkFlavor,
-  &.transparentDarkFlavor {
-    color-scheme: only dark;
-  }
-
+  // Pinned to light: dark and system flavors disabled so no dark color-scheme can apply.
+  // &.sakuraSystemFlavor,
+  // &.transparentSystemFlavor {
+  //   color-scheme: light dark;
+  // }
+  //
+  // &.sakuraDarkFlavor,
+  // &.transparentDarkFlavor {
+  //   color-scheme: only dark;
+  // }
   &.sakuraLightFlavor,
   &.transparentLightFlavor {
     color-scheme: only light;

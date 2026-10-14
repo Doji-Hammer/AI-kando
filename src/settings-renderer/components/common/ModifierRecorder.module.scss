@@ -1,0 +1,112 @@
+//////////////////////////////////////////////////////////////////////////////////////////
+//   _  _ ____ _  _ ___  ____                                                           //
+//   |_/  |__| |\ | |  \ |  |    This file belongs to Kando, the cross-platform         //
+//   | \_ |  | | \| |__/ |__|    pie menu. Read more on github.com/kando-menu/kando     //
+//                                                                                      //
+//////////////////////////////////////////////////////////////////////////////////////////
+
+// SPDX-FileCopyrightText: Simon Schneegans <code@simonschneegans.de>
+// SPDX-License-Identifier: MIT
+
+@use '../../variables.scss' as *;
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid $divider;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &.dimmed {
+    opacity: 0.55;
+  }
+
+  &.errbox {
+    border: 1px solid $error-text !important;
+    box-shadow: 0 0 0 3px rgba(198, 69, 69, 0.12);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: #ffffff;
+    margin: 6px 0;
+  }
+}
+
+.lab {
+  flex: 1;
+  color: $text-normal;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.exp {
+  font-family: $font-sans;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a5200;
+  background: rgba(233, 144, 49, 0.18);
+  border-radius: 99px;
+  padding: 2px 8px;
+  margin-left: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.hint {
+  display: block;
+  color: $text-muted;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.err {
+  display: block;
+  color: $error-text;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.chip {
+  font-family: $font-mono;
+  font-weight: 600;
+  font-size: 12px;
+  background: #2b2926;
+  color: #f4efe6;
+  border-radius: 6px;
+  padding: 4px 8px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  user-select: none;
+  line-height: normal;
+
+  &.rec {
+    background: $key-dark;
+    color: #ffffff;
+    cursor: default;
+    outline: none;
+
+    &:focus-visible {
+      outline: 2px solid $primary-active;
+      outline-offset: 1px;
+    }
+  }
+}
+
+.plus {
+  color: $text-muted;
+  font-size: 12px;
+  margin: 0 3px;
+  user-select: none;
+}

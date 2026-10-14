@@ -65,9 +65,13 @@ export default function App() {
   }, []);
 
   // Set the global color scheme to the body element.
+  // Pinned to light: always apply the light colour scheme class regardless of stored settings.
   React.useEffect(() => {
     const body = document.body;
 
+    body.classList.add('lightColors');
+
+    /* Original code:
     if (settingsWindowColorScheme === 'system') {
       body.classList.add('systemColors');
     }
@@ -77,10 +81,14 @@ export default function App() {
     if (settingsWindowColorScheme === 'dark') {
       body.classList.add('darkColors');
     }
+    */
     return () => {
+      body.classList.remove('lightColors');
+      /* Original code:
       body.classList.remove('systemColors');
       body.classList.remove('lightColors');
       body.classList.remove('darkColors');
+      */
     };
   }, [settingsWindowColorScheme]);
 
@@ -124,12 +132,17 @@ export default function App() {
       <div
         className={cx({
           outerContainer: true,
+          // Pinned to light: map flavor to its -light counterpart so no dark color-scheme can apply.
+          transparentLightFlavor: !settingsWindowFlavor.startsWith('sakura'),
+          sakuraLightFlavor: settingsWindowFlavor.startsWith('sakura'),
+          /* Original code:
           transparentLightFlavor: settingsWindowFlavor === 'transparent-light',
           transparentDarkFlavor: settingsWindowFlavor === 'transparent-dark',
           transparentSystemFlavor: settingsWindowFlavor === 'transparent-system',
           sakuraLightFlavor: settingsWindowFlavor === 'sakura-light',
           sakuraDarkFlavor: settingsWindowFlavor === 'sakura-dark',
           sakuraSystemFlavor: settingsWindowFlavor === 'sakura-system',
+          */
         })}>
         <div
           className={cx({

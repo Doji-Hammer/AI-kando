@@ -161,6 +161,7 @@ export default function GeneralSettingsDialog() {
           <h1>
             {i18next.t('settings.general-settings-dialog.settings-dialog-and-tray-icon')}
           </h1>
+          {/* hidden for now: the window is light only, flavors and tray variants are not offered
           <SettingsDropdown
             info={i18next.t(
               'settings.general-settings-dialog.settings-window-color-scheme-info'
@@ -251,6 +252,7 @@ export default function GeneralSettingsDialog() {
             ]}
             settingsKey="trayIconFlavor"
           />
+          */}
           <SettingsDropdown
             info={i18next.t(
               'settings.general-settings-dialog.settings-button-position-info'

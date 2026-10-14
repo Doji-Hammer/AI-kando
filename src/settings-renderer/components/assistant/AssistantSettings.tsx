@@ -19,7 +19,7 @@ import { useAssistant } from '../../state';
 import * as classes from './AssistantSettings.module.scss';
 
 /** Common endpoints, to save typing. Any OpenAI-compatible URL works. */
-const PRESETS: { label: string; endpoint: string; apiStyle: AssistantApiStyle }[] = [
+const PRESETS: { label: string; endpoint: string; apiStyle: AssistantApiStyle | '' }[] = [
   { label: 'Anthropic', endpoint: 'https://api.anthropic.com/v1', apiStyle: 'anthropic' },
   { label: 'OpenAI', endpoint: 'https://api.openai.com/v1', apiStyle: 'openai' },
   { label: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1', apiStyle: 'openai' },
@@ -28,6 +28,11 @@ const PRESETS: { label: string; endpoint: string; apiStyle: AssistantApiStyle }[
     label: 'LM Studio (local)',
     endpoint: 'http://localhost:1234/v1',
     apiStyle: 'openai',
+  },
+  {
+    label: 'Custom endpoint',
+    endpoint: '',
+    apiStyle: '',
   },
 ];
 
@@ -47,8 +52,10 @@ export default function AssistantSettings() {
   const config = useAssistant((s) => s.config);
   const setConfig = useAssistant((s) => s.setConfig);
 
+  const [selectedProvider, setSelectedProvider] =
+    React.useState<string>('Custom endpoint');
   const [endpoint, setEndpoint] = React.useState('');
-  const [apiStyle, setApiStyle] = React.useState<AssistantApiStyle>('openai');
+  const [apiStyle, setApiStyle] = React.useState<AssistantApiStyle | ''>('openai');
   const [key, setKey] = React.useState('');
   const [models, setModels] = React.useState<string[]>([]);
   const [model, setModel] = React.useState('');
@@ -66,13 +73,27 @@ export default function AssistantSettings() {
       if (c.model) {
         setModels([c.model]);
       }
+      const matched = PRESETS.find(
+        (p) =>
+          p.label !== 'Custom endpoint' &&
+          p.endpoint === c.endpoint &&
+          p.apiStyle === c.apiStyle
+      );
+      setSelectedProvider(matched ? matched.label : 'Custom endpoint');
     });
   }, [setConfig]);
 
   const loadModels = async () => {
+    if (!apiStyle) {
+      return;
+    }
+    const trimmed = endpoint.trim();
+    if (!trimmed) {
+      return;
+    }
     setIsLoading(true);
     setStatus(null);
-    const result = await window.settingsAPI.assistantListModels(endpoint, apiStyle, key);
+    const result = await window.settingsAPI.assistantListModels(trimmed, apiStyle, key);
     setIsLoading(false);
     if (result.error) {
       setStatus({ text: result.error, isError: true });
@@ -87,12 +108,26 @@ export default function AssistantSettings() {
   };
 
   const save = async () => {
-    let c = await window.settingsAPI.assistantSetConfig(endpoint, apiStyle, model);
+    if (!apiStyle) {
+      return;
+    }
+    const trimmed = endpoint.trim();
+    if (!trimmed) {
+      return;
+    }
+    let c = await window.settingsAPI.assistantSetConfig(trimmed, apiStyle, model);
     if (key) {
       c = await window.settingsAPI.assistantSetKey(key);
       setKey('');
     }
     setConfig(c);
+    const matched = PRESETS.find(
+      (p) =>
+        p.label !== 'Custom endpoint' &&
+        p.endpoint === c.endpoint &&
+        p.apiStyle === c.apiStyle
+    );
+    setSelectedProvider(matched ? matched.label : 'Custom endpoint');
     setStatus({ text: 'Saved.' });
   };
 
@@ -103,7 +138,7 @@ export default function AssistantSettings() {
 
   const isDirty =
     !config ||
-    endpoint !== config.endpoint ||
+    endpoint.trim() !== config.endpoint ||
     apiStyle !== config.apiStyle ||
     model !== config.model ||
     key !== '';
@@ -120,12 +155,14 @@ export default function AssistantSettings() {
         {PRESETS.map((p) => (
           <button
             key={p.label}
-            className={classes.preset}
+            className={`${classes.preset} ${selectedProvider === p.label ? classes.active : ''}`}
             type="button"
             onClick={() => {
+              setSelectedProvider(p.label);
               setEndpoint(p.endpoint);
               setApiStyle(p.apiStyle);
               setModels([]);
+              setModel('');
             }}>
             {p.label}
           </button>
@@ -140,8 +177,11 @@ export default function AssistantSettings() {
           type="url"
           value={endpoint}
           onChange={(e) => {
-            setEndpoint(e.target.value);
-            setApiStyle(guessStyle(e.target.value));
+            const val = e.target.value;
+            setEndpoint(val);
+            if (selectedProvider !== 'Custom endpoint') {
+              setApiStyle(guessStyle(val));
+            }
           }}
         />
       </label>
@@ -151,6 +191,9 @@ export default function AssistantSettings() {
         <select
           value={apiStyle}
           onChange={(e) => setApiStyle(e.target.value as AssistantApiStyle)}>
+          <option disabled value="">
+            Choose a format…
+          </option>
           <option value="openai">OpenAI-compatible</option>
           <option value="anthropic">Anthropic</option>
         </select>
@@ -197,7 +240,7 @@ export default function AssistantSettings() {
           </select>
           <button
             className={classes.secondary}
-            disabled={!endpoint || isLoading}
+            disabled={!endpoint.trim() || !apiStyle || isLoading}
             type="button"
             onClick={loadModels}>
             {isLoading ? 'Loading…' : 'Load models'}
@@ -213,7 +256,7 @@ export default function AssistantSettings() {
         </span>
         <button
           className={classes.primary}
-          disabled={!isDirty || !endpoint || !model}
+          disabled={!isDirty || !endpoint.trim() || !apiStyle || !model}
           type="button"
           onClick={save}>
           Save

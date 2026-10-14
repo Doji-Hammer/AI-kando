@@ -481,7 +481,6 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
       if (event.key === 'Escape') {
         return;
       }
-
       if (event.key === 'Enter') {
         if (event.type === 'keydown') {
           this.enterGestureTracker.onKeyDown(
@@ -680,7 +679,7 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
       this.pointerInput.cancelGesture();
     });
     window.addEventListener('blur', () => {
-      this.pointerInput.cancelGesture();
+      this.handleWindowBlur();
     });
     this.container.addEventListener('contextmenu', (e) => {
       debugLogPointerEvent(e);
@@ -689,6 +688,15 @@ export class Menu extends (EventEmitter as new () => TypedEventEmitter<MenuEvent
         e.stopPropagation();
       }
     });
+  }
+  /** Resets held input state and Enter gestures on window blur. */
+  public handleWindowBlur(): void {
+    this.enterGestureTracker.reset();
+    if (this.latestInput?.button === ButtonState.eClicked) {
+      this.latestInput.button = ButtonState.eReleased;
+      this.redraw();
+    }
+    this.pointerInput.cancelGesture();
   }
 
   /** Hides the menu. */

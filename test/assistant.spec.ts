@@ -20,6 +20,10 @@ import {
 import type { AssistantRequest } from '../src/common/assistant-types';
 import { buildProposal, OperationError } from '../src/main/assistant/operations';
 import {
+  handleAssistantListModels,
+  handleAssistantSetConfig,
+} from '../src/main/assistant/ipc';
+import {
   chat,
   detectApiStyle,
   listModels,
@@ -510,6 +514,139 @@ describe('assistant: runAssistant', () => {
     expect(reply).to.deep.equal({
       text: '404: model not found. Check the endpoint URL and the API format.',
       error: true,
+    });
+  });
+});
+
+describe('assistant: IPC handlers', () => {
+  const baseConfig = {
+    endpoint: 'https://api.example.com/v1',
+    apiStyle: 'openai' as const,
+    model: 'gpt-4o',
+  };
+  const publicConfig = {
+    ...baseConfig,
+    hasApiKey: true,
+    canStoreKeySecurely: true,
+  };
+
+  describe('handleAssistantSetConfig', () => {
+    it('rejects missing, empty, or unknown apiStyle instead of inferring', () => {
+      let written = false;
+      const deps = {
+        readConfig: () => ({ ...baseConfig }),
+        writeConfig: () => {
+          written = true;
+        },
+        publicConfig: () => ({ ...publicConfig }),
+      };
+
+      expect(() =>
+        handleAssistantSetConfig(deps, 'https://api.example.com/v1', undefined, 'm')
+      ).to.throw(/API format/);
+      expect(() =>
+        handleAssistantSetConfig(deps, 'https://api.example.com/v1', '', 'm')
+      ).to.throw(/API format/);
+      expect(() =>
+        handleAssistantSetConfig(deps, 'https://api.example.com/v1', 'custom', 'm')
+      ).to.throw(/API format/);
+      expect(written).to.equal(false);
+    });
+
+    it('saves and trims endpoint when apiStyle is valid', () => {
+      let saved: unknown = null;
+      const deps = {
+        readConfig: () => ({ ...baseConfig }),
+        writeConfig: (c: unknown) => {
+          saved = c;
+        },
+        publicConfig: () => ({ ...publicConfig }),
+      };
+
+      handleAssistantSetConfig(
+        deps,
+        '  https://api.anthropic.com/v1  ',
+        'anthropic',
+        'claude-3'
+      );
+      expect(saved).to.deep.equal({
+        endpoint: 'https://api.anthropic.com/v1',
+        apiStyle: 'anthropic',
+        model: 'claude-3',
+      });
+    });
+  });
+
+  describe('handleAssistantListModels', () => {
+    it('rejects missing, empty, or unknown apiStyle with an explicit error', async () => {
+      let called = false;
+      const deps = {
+        providerConfig: () => ({
+          endpoint: 'https://api.example.com/v1',
+          apiStyle: 'openai' as const,
+          model: 'm',
+          apiKey: 'key',
+        }),
+        listModels: async () => {
+          called = true;
+          return ['m1'];
+        },
+      };
+
+      const resEmpty = await handleAssistantListModels(
+        deps,
+        'https://api.example.com/v1',
+        '',
+        'key'
+      );
+      expect(resEmpty).to.deep.equal({ error: 'Choose an API format first.' });
+
+      const resUndefined = await handleAssistantListModels(
+        deps,
+        'https://api.example.com/v1',
+        undefined,
+        'key'
+      );
+      expect(resUndefined).to.deep.equal({ error: 'Choose an API format first.' });
+
+      const resUnknown = await handleAssistantListModels(
+        deps,
+        'https://api.example.com/v1',
+        'invalid',
+        'key'
+      );
+      expect(resUnknown).to.deep.equal({ error: 'Choose an API format first.' });
+
+      expect(called).to.equal(false);
+    });
+
+    it('calls listModels with trimmed endpoint when apiStyle is valid', async () => {
+      let passedConfig: unknown = null;
+      const deps = {
+        providerConfig: () => ({
+          endpoint: '',
+          apiStyle: 'openai' as const,
+          model: '',
+          apiKey: '',
+        }),
+        listModels: async (cfg: unknown) => {
+          passedConfig = cfg;
+          return ['model-a'];
+        },
+      };
+
+      const res = await handleAssistantListModels(
+        deps,
+        '  https://api.example.com/v1  ',
+        'openai',
+        'k'
+      );
+      expect(res).to.deep.equal({ models: ['model-a'] });
+      expect(passedConfig).to.deep.equal({
+        endpoint: 'https://api.example.com/v1',
+        apiStyle: 'openai',
+        apiKey: 'k',
+      });
     });
   });
 });

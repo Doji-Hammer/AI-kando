@@ -14,7 +14,15 @@ import {
   ShowMenuOptions,
   SelectionSource,
 } from './index';
-import { Modifiers, RuntimeAppBinding, AppOp } from './app-switcher';
+import {
+  Modifiers,
+  RuntimeAppBinding,
+  AppOp,
+  QuickCloseAction,
+  QuickCloseConfig,
+  QuickCloseContext,
+  isTabCloseSupportedApp,
+} from './app-switcher';
 import { MenuItem, Workflow, WorkflowAction } from './settings-schemata';
 
 /**
@@ -118,71 +126,86 @@ export function getAppLaunchTarget(item: unknown): string | null {
   return target;
 }
 
+const ALL_QUICK_CLOSE_ACTIONS: readonly QuickCloseAction[] = [
+  'quit',
+  'closeWindow',
+  'closeTab',
+  'hide',
+];
+
 /**
  * Resolves the operational action to perform for an app item given the modifier keys held
- * during selection.
- *
- * Exact modifier combinations:
- *
- * - `{}`: running ? `'activate'` : `'launch'`
- * - `{ctrl}`: running ? `'quit'` : `'none'`
- * - `{meta}`: running && binding.windowsKnown && binding.windowId !== undefined ?
- *   `'close-window'` : `'none'`
- * - `{alt}`: running && binding.windowsKnown && binding.windowId !== undefined ?
- *   `'close-tab'` : `'none'`
- * - `{meta, alt}`: running ? `'hide'` : `'none'`
- * - Any other combination (including shift): `'none'`
- *
- * Non-running apps with any modifier pressed never launch (`'none'`).
+ * during selection, the menu's Quick close configuration, and runtime capability
+ * context.
  */
 export function resolveAppOp(
   modifiers: Modifiers,
-  binding: RuntimeAppBinding
+  binding: RuntimeAppBinding,
+  config: QuickCloseConfig,
+  context: QuickCloseContext
 ): AppOp | 'launch' | 'none' {
   const ctrl = Boolean(modifiers.ctrl);
   const meta = Boolean(modifiers.meta);
   const alt = Boolean(modifiers.alt);
   const shift = Boolean(modifiers.shift);
+  const hasModifiers = ctrl || meta || alt || shift;
 
-  // Shift or combinations with shift are not used
-  if (shift) {
-    return 'none';
-  }
-
-  // Exact set: {}
-  if (!ctrl && !meta && !alt) {
+  // When Quick close is disabled for the menu, any held modifiers are treated as NONE (plain click).
+  if (!config.enabled) {
     return binding.running ? 'activate' : 'launch';
   }
 
-  // Non-running app selected with any modifier never launches
+  // Exact set: {}
+  if (!hasModifiers) {
+    return binding.running ? 'activate' : 'launch';
+  }
+
+  // Match held combination against the four configured bindings
+  const matchingActions: QuickCloseAction[] = [];
+  for (const action of ALL_QUICK_CLOSE_ACTIONS) {
+    const b = config.bindings[action];
+    if (
+      b &&
+      Boolean(b.ctrl) === ctrl &&
+      Boolean(b.meta) === meta &&
+      Boolean(b.alt) === alt &&
+      Boolean(b.shift) === shift
+    ) {
+      matchingActions.push(action);
+    }
+  }
+
+  // Ambiguous duplicate or unmatched non-empty combination => 'none', fail closed
+  if (matchingActions.length !== 1) {
+    return 'none';
+  }
+
+  const action = matchingActions[0];
+
+  // Non-running app selected with any matched combination never launches
   if (!binding.running) {
     return 'none';
   }
 
-  // Exact set: {ctrl}
-  if (ctrl && !meta && !alt) {
-    return 'quit';
+  switch (action) {
+    case 'quit':
+      return 'quit';
+    case 'closeWindow':
+      return binding.windowsKnown && binding.windowId !== undefined
+        ? 'close-window'
+        : 'none';
+    case 'closeTab':
+      return binding.windowsKnown &&
+        binding.windowId !== undefined &&
+        context.tabCloseAvailable &&
+        isTabCloseSupportedApp(binding.target)
+        ? 'close-tab'
+        : 'none';
+    case 'hide':
+      return 'hide';
+    default:
+      return 'none';
   }
-
-  // Exact set: {meta}
-  if (!ctrl && meta && !alt) {
-    return binding.windowsKnown && binding.windowId !== undefined
-      ? 'close-window'
-      : 'none';
-  }
-
-  // Exact set: {alt}
-  if (!ctrl && !meta && alt) {
-    return binding.windowsKnown && binding.windowId !== undefined ? 'close-tab' : 'none';
-  }
-
-  // Exact set: {meta, alt}
-  if (!ctrl && meta && alt) {
-    return 'hide';
-  }
-
-  // Any other combination (ctrl+meta, ctrl+alt, ctrl+meta+alt, etc.)
-  return 'none';
 }
 
 /** Mapping information from a displayed-tree path to the original source-tree path. */
@@ -264,14 +287,16 @@ export function decideAppSelection(
     readonly app?: unknown;
     readonly selectWorkflow?: unknown;
   },
-  modifiers: Modifiers
+  modifiers: Modifiers,
+  config: QuickCloseConfig,
+  context: QuickCloseContext
 ): AppSelectionDecision | null {
   const binding = item.app as RuntimeAppBinding | undefined;
   if (!binding) {
     return null;
   }
 
-  const op = resolveAppOp(modifiers, binding);
+  const op = resolveAppOp(modifiers, binding, config, context);
   const selectWorkflow = item.selectWorkflow as Workflow | undefined;
   const actions = selectWorkflow?.actions;
   const workflow: Workflow =
@@ -1165,12 +1190,12 @@ export class PrimaryPressTracker {
 export class EnterGestureTracker {
   private currentSession = 0;
   private pendingSession: number | null = null;
-  private pendingModifiers: Modifiers | null = null;
+  private capturedModifiers: Modifiers | null = null;
 
   /** Resets any pending Enter gesture snapshot without changing the current session id. */
   public reset(): void {
     this.pendingSession = null;
-    this.pendingModifiers = null;
+    this.capturedModifiers = null;
   }
 
   /**
@@ -1196,7 +1221,7 @@ export class EnterGestureTracker {
       return;
     }
     this.pendingSession = this.currentSession;
-    this.pendingModifiers = { ...modifiers };
+    this.capturedModifiers = { ...modifiers };
   }
 
   /**
@@ -1204,11 +1229,11 @@ export class EnterGestureTracker {
    * if there was a matching keydown in the current menu session. Returns null otherwise.
    */
   public onKeyUp(): Modifiers | null {
-    if (this.pendingSession !== this.currentSession || this.pendingModifiers === null) {
+    if (this.pendingSession !== this.currentSession || this.capturedModifiers === null) {
       this.reset();
       return null;
     }
-    const captured = this.pendingModifiers;
+    const captured = this.capturedModifiers;
     this.reset();
     return captured;
   }

@@ -14,20 +14,30 @@ On macOS, Kando turns menu items that launch applications into smart application
 - **Multi-Window Applications**: When an application has two or more open windows, the item expands into a submenu displaying each window by title (or `<App> (window N)` if untitled). Selecting a window raises and focuses that specific window.
 - **Non-Running Applications**: Unmodified selection launches the application as usual.
 
-## Modifier Key Actions
+## Quick Close Actions
 
-Holding modifier keys while selecting an application or window performs native control operations:
+Quick close lets you control applications directly from the menu. It is configured per menu in the Menu Behavior settings.
 
-| Modifier | Running Application | Non-Running Application |
-| :--- | :--- | :--- |
-| **None** | Focuses and raises application / window | Launches application |
-| <kbd>Control</kbd> (⌃) | Quits the application | No-op (never launches) |
-| <kbd>Command</kbd> (⌘) | Closes the selected window | No-op (never launches) |
-| <kbd>Option</kbd> (⌥) | Closes the active tab in the window (if 2+ tabs; disabled by default) | No-op (never launches) |
-| <kbd>Command</kbd> + <kbd>Option</kbd> (⌘⌥) | Hides the application | No-op (never launches) |
-| **Any other combination** | No-op | No-op (never launches) |
+### Per-Menu Configuration and Defaults
 
-*Note: Selecting a non-running application while holding any modifier key will never launch the application.*
+- **New Menus**: Quick close defaults to OFF for newly created menus.
+- **Legacy Menus**: Menus saved without the `quickClose` field retain legacy behavior. They run with Quick close ON and default bindings.
+- **Recovery**: Persisted data with an invalid or malformed `quickClose` field falls back to disabled defaults with a console warning. It never crashes application startup.
+- **Rebinding**: Each of the four actions can be rebound to any non-empty modifier combination (tab-close rebinding is read-only unless the tab-close capability gate is enabled). Empty combinations and duplicate combinations between actions are rejected.
+- **Duplicating Menus**: Duplicating a menu copies its Quick close setting exactly (absence stays legacy ON).
+
+The default modifier bindings are:
+
+| Action | Default Modifier | Running Application | Non-Running Application |
+| :--- | :--- | :--- | :--- |
+| **None** | None | Focuses and raises application or window | Launches application |
+| **Quit app** | <kbd>Control</kbd> (⌃) | Quits the application | No-op (never launches) |
+| **Close window** | <kbd>Command</kbd> (⌘) | Closes the selected window | No-op (never launches) |
+| **Close tab** | <kbd>Option</kbd> (⌥) | Closes the active tab (supported browsers, 2+ tabs, gated) | No-op (never launches) |
+| **Hide app** | <kbd>Command</kbd> + <kbd>Option</kbd> (⌘⌥) | Hides the application | No-op (never launches) |
+| **Unbound combination** | Any other | No-op | No-op (never launches) |
+
+Selecting a non-running application while holding any modifier combination never launches the application. When Quick close is turned off for a menu, held modifiers are ignored and clicks activate or launch normally.
 
 ### Which gestures can carry modifiers
 

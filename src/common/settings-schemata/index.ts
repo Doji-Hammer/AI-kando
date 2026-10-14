@@ -40,12 +40,16 @@ export type {
   WorkflowActionV2 as WorkflowAction,
   WorkflowActionTypeV2 as WorkflowActionType,
   WorkflowV2 as Workflow,
+  StoredQuickCloseV2 as StoredQuickClose,
+  QuickCloseConfigV2 as QuickCloseConfig,
 } from './menu-settings-v2';
 export {
   MENU_SETTINGS_SCHEMA_V2 as MENU_SETTINGS_SCHEMA,
   MENU_ITEM_SCHEMA_V2 as MENU_ITEM_SCHEMA,
   MENU_SCHEMA_V2 as MENU_SCHEMA,
   ROOT_MENU_ITEM_SCHEMA_V2 as ROOT_MENU_ITEM_SCHEMA,
+  STORED_QUICK_CLOSE_SCHEMA_V2 as STORED_QUICK_CLOSE_SCHEMA,
+  QUICK_CLOSE_CONFIG_SCHEMA_V2 as QUICK_CLOSE_CONFIG_SCHEMA,
 } from './menu-settings-v2';
 
 export type { ExportedMenuV2 as ExportedMenu } from './exported-menu-v2';

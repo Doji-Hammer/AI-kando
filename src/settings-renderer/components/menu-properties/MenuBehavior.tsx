@@ -16,7 +16,12 @@ import * as classes from './MenuBehavior.module.scss';
 const cx = classNames.bind(classes);
 
 import { useAppState, useMenuSettings } from '../../state';
-import { Button, Checkbox, Note } from '../common';
+import { Button, Checkbox, ModifierRecorder, Note } from '../common';
+import {
+  Modifiers,
+  QuickCloseAction,
+  resolveQuickCloseConfig,
+} from '../../../common/app-switcher';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import ScreenPositionPicker from './ScreenPositionPicker';
 import { BiTargetLock } from 'react-icons/bi';
@@ -27,7 +32,8 @@ export default function MenuBehavior() {
   const menus = useMenuSettings((state) => state.menus);
   const selectedMenu = useAppState((state) => state.selectedMenu);
   const editMenu = useMenuSettings((state) => state.editMenu);
-
+  const backend = useAppState((state) => state.backendInfo);
+  const tabCloseAvailable = Boolean(backend?.quickCloseTabAvailable);
   const [fixedPositionInputVisible, setFixedPositionInputVisible] = React.useState(false);
   const [fixedPositionPickerVisible, setFixedPositionPickerVisible] =
     React.useState(false);
@@ -41,7 +47,43 @@ export default function MenuBehavior() {
   }, [selectedMenu, menus]);
 
   const [menuPositionBehaviorRef] = useAutoAnimate({ duration: 250 });
+  const [quickCloseActionsRef] = useAutoAnimate({ duration: 250 });
 
+  const currentMenu = menus[selectedMenu];
+  const quickCloseConfig = resolveQuickCloseConfig(currentMenu?.quickClose);
+
+  const handleToggleQuickClose = (enabled: boolean) => {
+    editMenu(selectedMenu, (menu) => {
+      const resolved = resolveQuickCloseConfig(menu.quickClose);
+      menu.quickClose = {
+        enabled,
+        bindings: {
+          quit: { ...resolved.bindings.quit },
+          closeWindow: { ...resolved.bindings.closeWindow },
+          closeTab: { ...resolved.bindings.closeTab },
+          hide: { ...resolved.bindings.hide },
+        },
+      };
+      return menu;
+    });
+  };
+
+  const handleChangeBinding = (action: QuickCloseAction, combo: Modifiers) => {
+    editMenu(selectedMenu, (menu) => {
+      const resolved = resolveQuickCloseConfig(menu.quickClose);
+      menu.quickClose = {
+        enabled: resolved.enabled,
+        bindings: {
+          quit: { ...resolved.bindings.quit },
+          closeWindow: { ...resolved.bindings.closeWindow },
+          closeTab: { ...resolved.bindings.closeTab },
+          hide: { ...resolved.bindings.hide },
+          [action]: combo,
+        },
+      };
+      return menu;
+    });
+  };
   return (
     <div className={classes.container}>
       <Note useMarkdown marginBottom={-5} marginTop={-5}>
@@ -144,6 +186,77 @@ export default function MenuBehavior() {
           });
         }}
       />
+      <div className={classes.sub}>
+        <div className={classes.subT}>{i18next.t('settings.quick-close')}</div>
+        <div
+          className={cx({
+            toggleRow: true,
+            noBorder: !quickCloseConfig.enabled,
+          })}>
+          <div className={classes.lab}>
+            {i18next.t('settings.quick-close-toggle')}
+            <span className={classes.hint}>
+              {i18next.t('settings.quick-close-toggle-info')}
+            </span>
+          </div>
+          <input
+            aria-label={i18next.t('settings.quick-close-toggle')}
+            checked={quickCloseConfig.enabled}
+            className={classes.checkbox}
+            type="checkbox"
+            onChange={(e) => handleToggleQuickClose(e.target.checked)}
+          />
+        </div>
+        <div ref={quickCloseActionsRef}>
+          {quickCloseConfig.enabled ? (
+            <>
+              <ModifierRecorder
+                action="quit"
+                allBindings={quickCloseConfig.bindings}
+                label={i18next.t('settings.quick-close-action-quit')}
+                selectedMenu={selectedMenu}
+                value={quickCloseConfig.bindings.quit}
+                onChange={(combo) => handleChangeBinding('quit', combo)}
+              />
+              <ModifierRecorder
+                action="closeWindow"
+                allBindings={quickCloseConfig.bindings}
+                label={i18next.t('settings.quick-close-action-close-window')}
+                selectedMenu={selectedMenu}
+                value={quickCloseConfig.bindings.closeWindow}
+                onChange={(combo) => handleChangeBinding('closeWindow', combo)}
+              />
+              <ModifierRecorder
+                isExperimental
+                action="closeTab"
+                allBindings={quickCloseConfig.bindings}
+                hint={
+                  tabCloseAvailable
+                    ? i18next.t('settings.quick-close-tab-supported-browsers')
+                    : i18next.t('settings.quick-close-tab-disabled')
+                }
+                isDimmed={!tabCloseAvailable}
+                isReadOnly={!tabCloseAvailable}
+                label={i18next.t('settings.quick-close-action-close-tab')}
+                selectedMenu={selectedMenu}
+                value={quickCloseConfig.bindings.closeTab}
+                onChange={(combo) => handleChangeBinding('closeTab', combo)}
+              />
+              <ModifierRecorder
+                action="hide"
+                allBindings={quickCloseConfig.bindings}
+                label={i18next.t('settings.quick-close-action-hide')}
+                selectedMenu={selectedMenu}
+                value={quickCloseConfig.bindings.hide}
+                onChange={(combo) => handleChangeBinding('hide', combo)}
+              />
+              <div className={classes.permissionNote}>
+                {i18next.t('settings.quick-close-permission-hint')}
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
       <ScreenPositionPicker
         isVisible={fixedPositionPickerVisible}
         onClose={() => setFixedPositionPickerVisible(false)}

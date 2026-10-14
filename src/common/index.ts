@@ -13,6 +13,8 @@ export * from './typed-event-emitter';
 export * from './action-type-registry';
 export * from './shortcut';
 
+export type { QuickCloseConfig, QuickCloseContext } from './app-switcher';
+export * from './quick-close-validation';
 import { AchievementStats, Menu } from './settings-schemata';
 
 /** This type is used to pass command line arguments to the app. */
@@ -117,6 +119,11 @@ export type BackendInfo = {
    * switcher).
    */
   readonly supportsAppControl?: boolean;
+  /**
+   * Whether closing tabs via accessibility is available on the current platform/host
+   * (e.g. macOS with KANDO_UNVERIFIED_TAB_CLOSE=1).
+   */
+  readonly quickCloseTabAvailable?: boolean;
 };
 
 /** This type describes some information about the current version of Kando. */

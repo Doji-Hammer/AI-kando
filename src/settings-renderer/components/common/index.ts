@@ -24,6 +24,7 @@ export { default as Headerbar } from './Headerbar';
 export { default as IconChooserButton } from './IconChooserButton';
 export { default as InfoItem } from './InfoItem';
 export { default as MacroPicker } from './MacroPicker';
+export { default as ModifierRecorder } from './ModifierRecorder';
 export { default as Modal } from './Modal';
 export { default as Note } from './Note';
 export { default as Popover } from './Popover';

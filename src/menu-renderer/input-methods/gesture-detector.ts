@@ -36,7 +36,6 @@ export class GestureDetector extends EventEmitter {
    * time. These events also lead to selections.
    */
   private timeout: NodeJS.Timeout = null;
-
   /** Shorter gestures will not lead to selections. */
   public minStrokeLength = 150;
 

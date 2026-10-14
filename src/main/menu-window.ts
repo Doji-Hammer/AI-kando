@@ -33,7 +33,10 @@ import {
   DisplayedMenuItem,
   DisplayedRootMenuItem,
   AppOp,
+  QuickCloseConfig,
+  resolveQuickCloseConfig,
 } from '../common/app-switcher';
+import { DisplayedPathInfo } from '../common/app-switcher-logic';
 import {
   translateIpcInteraction,
   decideAppSelection,
@@ -101,6 +104,17 @@ export class MenuWindow extends BrowserWindow {
 
   /** The currently resolved tree and path mapping. */
   private currentResolvedTree?: ResolvedMenuTree;
+  /**
+   * Immutable snapshot of the currently displayed menu tree, quick-close config, and
+   * capabilities for selection dispatch.
+   */
+  private currentSnapshot?: {
+    root: DisplayedRootMenuItem;
+    pathMap: Map<string, DisplayedPathInfo>;
+    generation: number;
+    quickClose: QuickCloseConfig;
+    tabCloseAvailable: boolean;
+  };
 
   /** The last displayed root sent to the renderer. */
   private lastDisplayedRoot?: DisplayedRootMenuItem;
@@ -337,7 +351,17 @@ export class MenuWindow extends BrowserWindow {
     if (this.hideCoordinator.displayedGeneration !== generation) {
       return;
     }
+    const quickClose = resolveQuickCloseConfig(menu.quickClose);
+    const backendInfo = this.kando.getBackend().getBackendInfo();
+    const tabCloseAvailable = Boolean(backendInfo.quickCloseTabAvailable);
 
+    this.currentSnapshot = {
+      root: resolved.displayedRoot,
+      pathMap: resolved.pathMap,
+      generation,
+      quickClose,
+      tabCloseAvailable,
+    };
     this.currentResolvedTree = resolved;
     this.lastDisplayedRoot = resolved.displayedRoot;
     // Store the last menu to be able to execute the selected action later. The WMInfo
@@ -922,7 +946,16 @@ export class MenuWindow extends BrowserWindow {
               : NO_MODIFIERS;
 
           const displayedItem = item as DeepReadonly<DisplayedMenuItem>;
-          const appDecision = decideAppSelection(displayedItem, normalizedModifiers);
+          const snapshot = this.currentSnapshot;
+          const appDecision =
+            snapshot && snapshot.generation === capturedGeneration
+              ? decideAppSelection(
+                  displayedItem,
+                  normalizedModifiers,
+                  snapshot.quickClose,
+                  { tabCloseAvailable: snapshot.tabCloseAvailable }
+                )
+              : null;
 
           if (appDecision) {
             const host = {

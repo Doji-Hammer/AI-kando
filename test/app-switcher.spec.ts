@@ -37,6 +37,9 @@ import {
   RuntimeAppBinding,
   AppState,
   DisplayedButtonMenuItem,
+  QuickCloseConfig,
+  QuickCloseContext,
+  DEFAULT_QUICK_CLOSE_BINDINGS,
 } from '../src/common/app-switcher';
 import {
   MenuInteractionType,
@@ -231,6 +234,15 @@ describe('App switcher logic', () => {
       originalWorkflow: { actions: [] },
     };
 
+    const safariRunningBinding: RuntimeAppBinding = {
+      target: 'Safari',
+      running: true,
+      pid: 1234,
+      windowId: 42,
+      windowsKnown: true,
+      originalWorkflow: { actions: [] },
+    };
+
     const notRunningBinding: RuntimeAppBinding = {
       target: 'TestApp',
       running: false,
@@ -246,6 +258,20 @@ describe('App switcher logic', () => {
       originalWorkflow: { actions: [] },
     };
 
+    const defaultConfig: QuickCloseConfig = {
+      enabled: true,
+      bindings: DEFAULT_QUICK_CLOSE_BINDINGS,
+    };
+
+    const disabledConfig: QuickCloseConfig = {
+      enabled: false,
+      bindings: DEFAULT_QUICK_CLOSE_BINDINGS,
+    };
+
+    const defaultContext: QuickCloseContext = {
+      tabCloseAvailable: true,
+    };
+
     const mod = (partial: Partial<Modifiers>): Modifiers => ({
       ctrl: false,
       meta: false,
@@ -255,73 +281,315 @@ describe('App switcher logic', () => {
     });
 
     it('handles unmodified selection: activate when running, launch when not running', () => {
-      expect(resolveAppOp(NO_MODIFIERS, runningBinding)).to.equal('activate');
-      expect(resolveAppOp(NO_MODIFIERS, notRunningBinding)).to.equal('launch');
+      expect(
+        resolveAppOp(NO_MODIFIERS, runningBinding, defaultConfig, defaultContext)
+      ).to.equal('activate');
+      expect(
+        resolveAppOp(NO_MODIFIERS, notRunningBinding, defaultConfig, defaultContext)
+      ).to.equal('launch');
     });
 
     it('handles Control: always quit when running, none when not running', () => {
-      expect(resolveAppOp(mod({ ctrl: true }), runningBinding)).to.equal('quit');
-      expect(resolveAppOp(mod({ ctrl: true }), runningUnknownWindowsBinding)).to.equal(
-        'quit'
-      );
-      expect(resolveAppOp(mod({ ctrl: true }), notRunningBinding)).to.equal('none');
+      expect(
+        resolveAppOp(mod({ ctrl: true }), runningBinding, defaultConfig, defaultContext)
+      ).to.equal('quit');
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true }),
+          runningUnknownWindowsBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('quit');
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true }),
+          notRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
     });
 
     it('handles Meta (Command): close-window when window known, else none', () => {
-      expect(resolveAppOp(mod({ meta: true }), runningBinding)).to.equal('close-window');
-      expect(resolveAppOp(mod({ meta: true }), runningUnknownWindowsBinding)).to.equal(
-        'none'
-      );
-      expect(resolveAppOp(mod({ meta: true }), notRunningBinding)).to.equal('none');
+      expect(
+        resolveAppOp(mod({ meta: true }), runningBinding, defaultConfig, defaultContext)
+      ).to.equal('close-window');
+      expect(
+        resolveAppOp(
+          mod({ meta: true }),
+          runningUnknownWindowsBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ meta: true }),
+          notRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
     });
 
-    it('handles Alt (Option): close-tab when window known, else none', () => {
-      expect(resolveAppOp(mod({ alt: true }), runningBinding)).to.equal('close-tab');
-      expect(resolveAppOp(mod({ alt: true }), runningUnknownWindowsBinding)).to.equal(
-        'none'
-      );
-      expect(resolveAppOp(mod({ alt: true }), notRunningBinding)).to.equal('none');
+    it('handles Alt (Option): close-tab when window known, context enabled and supported browser', () => {
+      expect(
+        resolveAppOp(
+          mod({ alt: true }),
+          safariRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('close-tab');
+      expect(
+        resolveAppOp(
+          mod({ alt: true }),
+          runningUnknownWindowsBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(mod({ alt: true }), notRunningBinding, defaultConfig, defaultContext)
+      ).to.equal('none');
+      // Unsupported browser target fails closed
+      expect(
+        resolveAppOp(mod({ alt: true }), runningBinding, defaultConfig, defaultContext)
+      ).to.equal('none');
+      // Tab closing unavailable in context fails closed
+      expect(
+        resolveAppOp(mod({ alt: true }), safariRunningBinding, defaultConfig, {
+          tabCloseAvailable: false,
+        })
+      ).to.equal('none');
+    });
+
+    it('supports tab closing case-insensitively for all 5 browser targets', () => {
+      for (const browser of [
+        'Vivaldi',
+        'google chrome',
+        'BRAVE BROWSER',
+        'safari',
+        'Firefox',
+      ]) {
+        const binding: RuntimeAppBinding = { ...runningBinding, target: browser };
+        expect(
+          resolveAppOp(mod({ alt: true }), binding, defaultConfig, defaultContext)
+        ).to.equal('close-tab');
+      }
     });
 
     it('handles Meta+Alt (Command+Option): hide when running, none when not running', () => {
-      expect(resolveAppOp(mod({ meta: true, alt: true }), runningBinding)).to.equal(
-        'hide'
-      );
       expect(
-        resolveAppOp(mod({ meta: true, alt: true }), runningUnknownWindowsBinding)
+        resolveAppOp(
+          mod({ meta: true, alt: true }),
+          runningBinding,
+          defaultConfig,
+          defaultContext
+        )
       ).to.equal('hide');
-      expect(resolveAppOp(mod({ meta: true, alt: true }), notRunningBinding)).to.equal(
-        'none'
-      );
+      expect(
+        resolveAppOp(
+          mod({ meta: true, alt: true }),
+          runningUnknownWindowsBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('hide');
+      expect(
+        resolveAppOp(
+          mod({ meta: true, alt: true }),
+          notRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
     });
 
-    it('rejects shift and all other modifier combinations', () => {
-      expect(resolveAppOp(mod({ shift: true }), runningBinding)).to.equal('none');
-      expect(resolveAppOp(mod({ ctrl: true, meta: true }), runningBinding)).to.equal(
-        'none'
-      );
-      expect(resolveAppOp(mod({ ctrl: true, alt: true }), runningBinding)).to.equal(
-        'none'
-      );
+    it('rejects shift and all other modifier combinations under default config', () => {
       expect(
-        resolveAppOp(mod({ ctrl: true, meta: true, alt: true }), runningBinding)
+        resolveAppOp(mod({ shift: true }), runningBinding, defaultConfig, defaultContext)
       ).to.equal('none');
-      expect(resolveAppOp(mod({ meta: true, shift: true }), runningBinding)).to.equal(
-        'none'
-      );
-      expect(resolveAppOp(mod({ alt: true, shift: true }), runningBinding)).to.equal(
-        'none'
-      );
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true, meta: true }),
+          runningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true, alt: true }),
+          runningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true, meta: true, alt: true }),
+          runningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ meta: true, shift: true }),
+          runningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ alt: true, shift: true }),
+          runningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
     });
 
     it('never launches a non-running app when any modifier is pressed', () => {
-      expect(resolveAppOp(mod({ ctrl: true }), notRunningBinding)).to.equal('none');
-      expect(resolveAppOp(mod({ meta: true }), notRunningBinding)).to.equal('none');
-      expect(resolveAppOp(mod({ alt: true }), notRunningBinding)).to.equal('none');
-      expect(resolveAppOp(mod({ meta: true, alt: true }), notRunningBinding)).to.equal(
-        'none'
-      );
-      expect(resolveAppOp(mod({ shift: true }), notRunningBinding)).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true }),
+          notRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ meta: true }),
+          notRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(mod({ alt: true }), notRunningBinding, defaultConfig, defaultContext)
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ meta: true, alt: true }),
+          notRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+      expect(
+        resolveAppOp(
+          mod({ shift: true }),
+          notRunningBinding,
+          defaultConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+    });
+
+    it('treats all modifiers as none when config.enabled is false', () => {
+      expect(
+        resolveAppOp(mod({ ctrl: true }), runningBinding, disabledConfig, defaultContext)
+      ).to.equal('activate');
+      expect(
+        resolveAppOp(mod({ meta: true }), runningBinding, disabledConfig, defaultContext)
+      ).to.equal('activate');
+      expect(
+        resolveAppOp(
+          mod({ alt: true }),
+          safariRunningBinding,
+          disabledConfig,
+          defaultContext
+        )
+      ).to.equal('activate');
+      expect(
+        resolveAppOp(
+          mod({ meta: true, alt: true }),
+          runningBinding,
+          disabledConfig,
+          defaultContext
+        )
+      ).to.equal('activate');
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true }),
+          notRunningBinding,
+          disabledConfig,
+          defaultContext
+        )
+      ).to.equal('launch');
+      expect(
+        resolveAppOp(NO_MODIFIERS, notRunningBinding, disabledConfig, defaultContext)
+      ).to.equal('launch');
+    });
+
+    it('honors custom modifier bindings', () => {
+      const customConfig: QuickCloseConfig = {
+        enabled: true,
+        bindings: {
+          quit: { ctrl: false, meta: true, alt: false, shift: true },
+          closeWindow: { ctrl: true, meta: false, alt: false, shift: false },
+          closeTab: { ctrl: false, meta: false, alt: false, shift: true },
+          hide: { ctrl: true, meta: true, alt: false, shift: false },
+        },
+      };
+
+      expect(
+        resolveAppOp(
+          mod({ meta: true, shift: true }),
+          runningBinding,
+          customConfig,
+          defaultContext
+        )
+      ).to.equal('quit');
+      expect(
+        resolveAppOp(mod({ ctrl: true }), runningBinding, customConfig, defaultContext)
+      ).to.equal('close-window');
+      expect(
+        resolveAppOp(
+          mod({ shift: true }),
+          safariRunningBinding,
+          customConfig,
+          defaultContext
+        )
+      ).to.equal('close-tab');
+      expect(
+        resolveAppOp(
+          mod({ ctrl: true, meta: true }),
+          runningBinding,
+          customConfig,
+          defaultContext
+        )
+      ).to.equal('hide');
+      // Old default combos now return none
+      expect(
+        resolveAppOp(
+          mod({ meta: true, alt: true }),
+          runningBinding,
+          customConfig,
+          defaultContext
+        )
+      ).to.equal('none');
+    });
+
+    it('fails closed when bindings contain duplicate combinations', () => {
+      const duplicateConfig: QuickCloseConfig = {
+        enabled: true,
+        bindings: {
+          quit: { ctrl: true, meta: false, alt: false, shift: false },
+          closeWindow: { ctrl: true, meta: false, alt: false, shift: false },
+          closeTab: { ctrl: false, meta: false, alt: true, shift: false },
+          hide: { ctrl: false, meta: true, alt: true, shift: false },
+        },
+      };
+
+      expect(
+        resolveAppOp(mod({ ctrl: true }), runningBinding, duplicateConfig, defaultContext)
+      ).to.equal('none');
     });
   });
 
@@ -946,6 +1214,13 @@ describe('App switcher logic', () => {
     const launchAction = makeExecuteAction('open -a Safari');
     const closeAction: WorkflowAction = { type: 'close-menu' };
     const originalWorkflow: Workflow = { actions: [launchAction, closeAction] };
+    const config: QuickCloseConfig = {
+      enabled: true,
+      bindings: DEFAULT_QUICK_CLOSE_BINDINGS,
+    };
+    const context: QuickCloseContext = {
+      tabCloseAvailable: true,
+    };
 
     it('returns null for non-app items', () => {
       const item: ButtonMenuItem = {
@@ -955,7 +1230,7 @@ describe('App switcher logic', () => {
         iconTheme: 'theme',
         selectWorkflow: { actions: [closeAction] },
       };
-      expect(decideAppSelection(item, NO_MODIFIERS)).to.be.null;
+      expect(decideAppSelection(item, NO_MODIFIERS, config, context)).to.be.null;
     });
 
     it('returns launch without override for unmodified non-running app', () => {
@@ -973,7 +1248,7 @@ describe('App switcher logic', () => {
         },
       };
 
-      const decision = decideAppSelection(item, NO_MODIFIERS);
+      const decision = decideAppSelection(item, NO_MODIFIERS, config, context);
       expect(decision).to.not.be.null;
       expect(decision?.op).to.equal('launch');
       expect(decision?.launchActionToOverride).to.be.undefined;
@@ -995,12 +1270,17 @@ describe('App switcher logic', () => {
         },
       };
 
-      const decision = decideAppSelection(item, {
-        ctrl: true,
-        meta: false,
-        alt: false,
-        shift: false,
-      });
+      const decision = decideAppSelection(
+        item,
+        {
+          ctrl: true,
+          meta: false,
+          alt: false,
+          shift: false,
+        },
+        config,
+        context
+      );
       expect(decision).to.not.be.null;
       expect(decision?.op).to.equal('none');
       expect(decision?.launchActionToOverride).to.equal(launchAction);
@@ -1023,7 +1303,7 @@ describe('App switcher logic', () => {
         },
       };
 
-      const decision = decideAppSelection(item, NO_MODIFIERS);
+      const decision = decideAppSelection(item, NO_MODIFIERS, config, context);
       expect(decision).to.not.be.null;
       expect(decision?.op).to.equal('activate');
       expect(decision?.launchActionToOverride).to.equal(launchAction);
@@ -1046,12 +1326,17 @@ describe('App switcher logic', () => {
         },
       };
 
-      const decision = decideAppSelection(childItem, {
-        ctrl: false,
-        meta: true,
-        alt: false,
-        shift: false,
-      });
+      const decision = decideAppSelection(
+        childItem,
+        {
+          ctrl: false,
+          meta: true,
+          alt: false,
+          shift: false,
+        },
+        config,
+        context
+      );
       expect(decision).to.not.be.null;
       expect(decision?.op).to.equal('close-window');
       expect(decision?.workflowToExecute).to.equal(originalWorkflow);
@@ -1078,17 +1363,51 @@ describe('App switcher logic', () => {
         },
       };
 
-      const decision = decideAppSelection(item, {
-        ctrl: true,
-        meta: false,
-        alt: false,
-        shift: false,
-      });
+      const decision = decideAppSelection(
+        item,
+        {
+          ctrl: true,
+          meta: false,
+          alt: false,
+          shift: false,
+        },
+        config,
+        context
+      );
 
       expect(decision).to.not.be.null;
       expect(decision?.op).to.equal('none');
       expect(decision?.launchActionToOverride).to.be.undefined;
       expect(decision?.workflowToExecute.actions).to.deep.equal([{ type: 'close-menu' }]);
+    });
+
+    it('treats modified click as unmodified when Quick close is disabled', () => {
+      const disabledConfig: QuickCloseConfig = {
+        enabled: false,
+        bindings: DEFAULT_QUICK_CLOSE_BINDINGS,
+      };
+      const item = {
+        type: 'button',
+        name: 'Safari',
+        icon: 'icon',
+        iconTheme: 'theme',
+        selectWorkflow: originalWorkflow,
+        app: {
+          target: 'Safari',
+          running: true,
+          pid: 10,
+          windowsKnown: true,
+          windowId: 50,
+          originalWorkflow,
+        },
+      };
+      const decision = decideAppSelection(
+        item,
+        { ctrl: true, meta: false, alt: false, shift: false },
+        disabledConfig,
+        context
+      );
+      expect(decision?.op).to.equal('activate');
     });
   });
 
@@ -1129,7 +1448,6 @@ describe('App switcher logic', () => {
       hoverMode: false,
       systemIconsChanged: false,
     };
-
     const environment = {
       appName: 'Finder',
       windowName: 'Desktop',
@@ -2147,6 +2465,16 @@ describe('App switcher logic', () => {
 
       const modifiers = tracker.onKeyUp();
       expect(modifiers).to.be.null;
+    });
+    it('does not let a pending modified Enter survive window blur or reset', () => {
+      const tracker = new EnterGestureTracker();
+      tracker.startSession();
+      tracker.onKeyDown({ ctrl: true, meta: false, alt: false, shift: false });
+
+      // Window blur resets the tracker
+      tracker.reset();
+
+      expect(tracker.onKeyUp()).to.be.null;
     });
 
     const ctrl: Modifiers = { ctrl: true, meta: false, alt: false, shift: false };

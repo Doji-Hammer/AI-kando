@@ -151,7 +151,6 @@ export class PointerInput extends InputMethod {
     this.deferredTurboMode = deferTurboMode;
     this.primaryPress.cancel();
   }
-
   /**
    * Drops the pending gesture state: a press which is cancelled, interrupted by focus
    * loss, or left over from a hidden menu can never turn into a modified selection.
@@ -160,7 +159,6 @@ export class PointerInput extends InputMethod {
     this.primaryPress.cancel();
     this.clickPosition = null;
   }
-
   /*
    * This method should be called when the pointer is moved.
    *
@@ -330,7 +328,6 @@ export class PointerInput extends InputMethod {
         ? this.primaryPress.release(event.clientX, event.clientY, this.dragThreshold)
         : false;
     this.primaryPress.cancel();
-
     // Do not trigger marking-mode selections on the center item.
     const markingModeSelection =
       this.buttonState === ButtonState.eDragged &&

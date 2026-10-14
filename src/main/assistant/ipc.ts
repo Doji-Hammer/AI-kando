@@ -40,7 +40,12 @@ function readConfig(): StoredConfig {
     const raw = JSON.parse(fs.readFileSync(configFile(), 'utf8'));
     return {
       endpoint: typeof raw.endpoint === 'string' ? raw.endpoint : '',
-      apiStyle: raw.apiStyle === 'anthropic' ? 'anthropic' : 'openai',
+      apiStyle:
+        raw.apiStyle === 'anthropic' || raw.apiStyle === 'openai'
+          ? raw.apiStyle
+          : typeof raw.endpoint === 'string' && raw.endpoint
+            ? detectApiStyle(raw.endpoint)
+            : 'openai',
       model: typeof raw.model === 'string' ? raw.model : '',
     };
   } catch {
@@ -101,26 +106,70 @@ function providerConfig(): ProviderConfig {
 
 const isString = (v: unknown): v is string => typeof v === 'string';
 
+export function handleAssistantSetConfig(
+  deps: {
+    readConfig: () => StoredConfig;
+    writeConfig: (config: StoredConfig) => void;
+    publicConfig: () => AssistantConfig;
+  },
+  endpoint: unknown,
+  apiStyle: unknown,
+  model: unknown
+): AssistantConfig {
+  if (apiStyle !== 'anthropic' && apiStyle !== 'openai') {
+    throw new Error('API format must be either "openai" or "anthropic".');
+  }
+  const current = deps.readConfig();
+  const next: StoredConfig = {
+    endpoint: isString(endpoint) ? endpoint.trim() : current.endpoint,
+    apiStyle,
+    model: isString(model) ? model : current.model,
+  };
+  deps.writeConfig(next);
+  return deps.publicConfig();
+}
+
+export async function handleAssistantListModels(
+  deps: {
+    providerConfig: () => ProviderConfig;
+    listModels: (config: ProviderConfig) => Promise<string[]>;
+  },
+  endpoint: unknown,
+  apiStyle: unknown,
+  key: unknown
+): Promise<{ models?: string[]; error?: string }> {
+  const saved = deps.providerConfig();
+  const ep = isString(endpoint) && endpoint.trim() ? endpoint.trim() : saved.endpoint;
+  if (!ep) {
+    return { error: 'Enter an endpoint URL first.' };
+  }
+  if (apiStyle !== 'anthropic' && apiStyle !== 'openai') {
+    return { error: 'Choose an API format first.' };
+  }
+  try {
+    const models = await deps.listModels({
+      endpoint: ep,
+      apiStyle,
+      apiKey: isString(key) && key ? key : saved.apiKey,
+    });
+    return { models };
+  } catch (e) {
+    return { error: e instanceof ProviderError ? e.message : String(e) };
+  }
+}
+
 export function registerAssistantIpc() {
   ipcMain.handle('settings-window.assistant-get-config', () => publicConfig());
 
   ipcMain.handle(
     'settings-window.assistant-set-config',
-    (_e, endpoint: unknown, apiStyle: unknown, model: unknown) => {
-      const current = readConfig();
-      const next: StoredConfig = {
-        endpoint: isString(endpoint) ? endpoint.trim() : current.endpoint,
-        apiStyle:
-          apiStyle === 'anthropic' || apiStyle === 'openai'
-            ? apiStyle
-            : isString(endpoint)
-              ? detectApiStyle(endpoint)
-              : current.apiStyle,
-        model: isString(model) ? model : current.model,
-      };
-      writeConfig(next);
-      return publicConfig();
-    }
+    (_e, endpoint: unknown, apiStyle: unknown, model: unknown) =>
+      handleAssistantSetConfig(
+        { readConfig, writeConfig, publicConfig },
+        endpoint,
+        apiStyle,
+        model
+      )
   );
 
   ipcMain.handle('settings-window.assistant-set-key', (_e, key: unknown) => {
@@ -132,24 +181,8 @@ export function registerAssistantIpc() {
   // the user can test before saving. A key typed into the form is used once, not stored.
   ipcMain.handle(
     'settings-window.assistant-list-models',
-    async (_e, endpoint: unknown, apiStyle: unknown, key: unknown) => {
-      const saved = providerConfig();
-      const ep = isString(endpoint) && endpoint ? endpoint : saved.endpoint;
-      if (!ep) {
-        return { error: 'Enter an endpoint URL first.' };
-      }
-      try {
-        const models = await listModels({
-          endpoint: ep,
-          apiStyle:
-            apiStyle === 'anthropic' || apiStyle === 'openai' ? apiStyle : saved.apiStyle,
-          apiKey: isString(key) && key ? key : saved.apiKey,
-        });
-        return { models };
-      } catch (e) {
-        return { error: e instanceof ProviderError ? e.message : String(e) };
-      }
-    }
+    (_e, endpoint: unknown, apiStyle: unknown, key: unknown) =>
+      handleAssistantListModels({ providerConfig, listModels }, endpoint, apiStyle, key)
   );
 
   ipcMain.handle(

@@ -6,6 +6,15 @@
     "x": 0.5,
     "y": 0.5
   },
+  "quickClose": {
+    "enabled": false,
+    "bindings": {
+      "quit": { "ctrl": true, "meta": false, "alt": false, "shift": false },
+      "closeWindow": { "ctrl": false, "meta": true, "alt": false, "shift": false },
+      "closeTab": { "ctrl": false, "meta": false, "alt": true, "shift": false },
+      "hide": { "ctrl": false, "meta": true, "alt": true, "shift": false }
+    }
+  },
   "root": {
     "type": "root",
     "name": "example-menu.name",

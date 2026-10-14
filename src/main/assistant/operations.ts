@@ -25,6 +25,8 @@ import type {
   AssistantMarker,
   AssistantProposal,
 } from '../../common/assistant-types';
+import { DEFAULT_QUICK_CLOSE_BINDINGS } from '../../common/app-switcher';
+import { validateQuickCloseConfig } from '../../common/quick-close-validation';
 
 /**
  * Applies the operations the model proposed to a COPY of the configuration and checks the
@@ -267,13 +269,33 @@ export function buildProposal(
           break;
         }
         case 'add_menu': {
+          if (
+            op.menu_definition &&
+            typeof op.menu_definition === 'object' &&
+            'quickClose' in op.menu_definition &&
+            (op.menu_definition as Record<string, unknown>).quickClose !== undefined
+          ) {
+            const qc = (op.menu_definition as Record<string, unknown>).quickClose;
+            const validation = validateQuickCloseConfig(qc);
+            if (!validation.ok) {
+              const reason = 'reason' in validation ? validation.reason : 'invalid';
+              throw new OperationError(
+                `menu_definition.quickClose is invalid: ${reason}`
+              );
+            }
+          }
           const parsed = MENU_SCHEMA.safeParse(op.menu_definition);
           if (!parsed.success) {
             throw new OperationError(
               'menu_definition is invalid: ' + formatZodIssues(parsed.error)
             );
           }
-          menus.push(parsed.data as Menu);
+          const newMenu = parsed.data as Menu;
+          newMenu.quickClose = {
+            enabled: false,
+            bindings: { ...DEFAULT_QUICK_CLOSE_BINDINGS },
+          };
+          menus.push(newMenu);
           mark(menus[menus.length - 1].root as unknown as Node, 'add');
           changes.push({ kind: 'add', text: `Add menu “${parsed.data.root.name}”` });
           break;

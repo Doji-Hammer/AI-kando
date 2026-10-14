@@ -41,9 +41,18 @@
   font: inherit;
   font-size: 13px;
   cursor: pointer;
-
   &:hover {
     background: $surface-card;
+  }
+
+  &.active {
+    background: $key-dark;
+    color: #ffffff;
+    border-color: $key-dark;
+
+    &:hover {
+      background: $key-dark;
+    }
   }
 }
 
